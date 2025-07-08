@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "952415174205",
+    "project_id": "robodraw-29e1a",
+    "storage_bucket": "robodraw-29e1a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:952415174205:android:533b1f56e8c7d0a619b454",
+        "android_client_info": {
+          "package_name": "com.example.drawbot"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYalwtdUslIikewnApEYC5NB6aB1mVAL8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

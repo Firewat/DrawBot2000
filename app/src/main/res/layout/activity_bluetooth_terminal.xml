@@ -1,0 +1,428 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    tools:context=".BluetoothTerminalActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Header -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="GRBL DrawBot Terminal"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textAlignment="center"
+            android:background="#E3F2FD"
+            android:padding="12dp"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Geräte-Auswahl -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="GRBL-Gerät: "
+                android:textStyle="bold"
+                android:layout_gravity="center_vertical" />
+
+            <Spinner
+                android:id="@+id/spinnerDevices"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp" />
+
+            <Button
+                android:id="@+id/btnRefreshDevices"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🔄"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <!-- Verbindungs-Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+
+            <Button
+                android:id="@+id/btnConnect"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Verbinden"
+                android:backgroundTint="#4CAF50"
+                android:layout_marginEnd="4dp" />
+
+            <Button
+                android:id="@+id/btnDisconnect"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Trennen"
+                android:enabled="false"
+                android:backgroundTint="#F44336"
+                android:layout_marginStart="4dp" />
+        </LinearLayout>
+
+        <!-- TERMINAL BEREICH - JETZT PROMINENT -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="📟 GRBL Terminal (Antworten von Arduino)"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:background="#FFF3E0"
+            android:padding="8dp"
+            android:layout_marginBottom="8dp"/>
+
+        <ScrollView
+            android:id="@+id/scrollViewTerminal"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:background="#263238"
+            android:padding="8dp"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:id="@+id/tvTerminal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="[GRBL TERMINAL BEREIT]\nVerbinde mit einem Arduino mit GRBL...\n"
+                android:textColor="#00FF00"
+                android:textSize="12sp"
+                android:fontFamily="monospace"
+                android:scrollbars="vertical"
+                android:textIsSelectable="true" />
+        </ScrollView>
+
+        <!-- Befehls-Eingabe -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <EditText
+                android:id="@+id/etCommand"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="G-Code Befehl eingeben (z.B. G0 X10)"
+                android:enabled="false"
+                android:fontFamily="monospace"
+                android:background="#F5F5F5"
+                android:padding="8dp" />
+
+            <Button
+                android:id="@+id/btnSend"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Senden"
+                android:enabled="false"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnClearTerminal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Terminal löschen"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Test-Funktionen -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🎯 Test-Funktionen"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:background="#E8F5E8"
+            android:padding="8dp"
+            android:layout_marginBottom="8dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+
+            <Button
+                android:id="@+id/btnTestCircle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Test Kreis (3cm)"
+                android:enabled="false"
+                android:layout_marginEnd="4dp" />
+
+            <Button
+                android:id="@+id/btnHome"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Home (0,0)"
+                android:enabled="false"
+                android:layout_marginStart="4dp" />
+        </LinearLayout>
+
+        <!-- Bild zu G-Code -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🖼️ Erweiterte Bild zu G-Code Konvertierung"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:background="#F3E5F5"
+            android:padding="8dp"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- Konvertierungsmodus -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Modus: "
+                android:textStyle="bold"
+                android:layout_gravity="center_vertical" />
+
+            <Spinner
+                android:id="@+id/spinnerConversionMode"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <Button
+                android:id="@+id/btnSelectImage"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Bild auswählen"
+                android:enabled="false"
+                android:layout_marginEnd="4dp" />
+
+            <Button
+                android:id="@+id/btnPreviewGCode"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Vorschau"
+                android:enabled="false"
+                android:layout_marginStart="4dp" />
+        </LinearLayout>
+
+        <!-- Erweiterte Einstellungen -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="⚙️ Konvertierungseinstellungen"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- Größe und Qualität -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Größe (mm): "
+                        android:textStyle="bold"
+                        android:layout_gravity="center_vertical" />
+
+                    <EditText
+                        android:id="@+id/etImageSize"
+                        android:layout_width="60dp"
+                        android:layout_height="wrap_content"
+                        android:hint="50"
+                        android:inputType="number"
+                        android:textSize="14sp"
+                        android:layout_marginEnd="16dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Schwellwert: "
+                        android:textStyle="bold"
+                        android:layout_gravity="center_vertical" />
+
+                    <EditText
+                        android:id="@+id/etThreshold"
+                        android:layout_width="60dp"
+                        android:layout_height="wrap_content"
+                        android:hint="128"
+                        android:inputType="number"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <!-- Linienabstand und Geschwindigkeit -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Linienabstand: "
+                        android:textStyle="bold"
+                        android:layout_gravity="center_vertical" />
+
+                    <EditText
+                        android:id="@+id/etLineSpacing"
+                        android:layout_width="60dp"
+                        android:layout_height="wrap_content"
+                        android:hint="0.5"
+                        android:inputType="numberDecimal"
+                        android:textSize="14sp"
+                        android:layout_marginEnd="16dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Geschw.: "
+                        android:textStyle="bold"
+                        android:layout_gravity="center_vertical" />
+
+                    <EditText
+                        android:id="@+id/etFeedRate"
+                        android:layout_width="60dp"
+                        android:layout_height="wrap_content"
+                        android:hint="800"
+                        android:inputType="number"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <!-- Checkboxes für Optionen -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <CheckBox
+                        android:id="@+id/cbOptimizePath"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Pfad optimieren"
+                        android:checked="true"
+                        android:textSize="12sp" />
+
+                    <CheckBox
+                        android:id="@+id/cbInvertImage"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Bild invertieren"
+                        android:textSize="12sp"
+                        android:layout_marginStart="16dp" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <Button
+            android:id="@+id/btnDrawImage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🎨 Erweiterte Zeichnung starten"
+            android:enabled="false"
+            android:backgroundTint="#FF6F00"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tvSelectedImage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Kein Bild ausgewählt"
+            android:textStyle="italic"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- G-Code Statistiken -->
+        <TextView
+            android:id="@+id/tvGCodeStats"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="12sp"
+            android:background="#E8F5E8"
+            android:padding="8dp"
+            android:visibility="gone"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- Progress Anzeige -->
+        <ProgressBar
+            android:id="@+id/progressBarImage"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:layout_marginBottom="4dp"/>
+
+        <TextView
+            android:id="@+id/tvProgressText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textAlignment="center"
+            android:visibility="gone"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Info-Bereich -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ℹ️ Hinweise:\n• Lange drücken auf 'Test Kreis' für Verbindungstest\n• Terminal zeigt alle GRBL-Antworten\n• GRBL muss auf Arduino installiert sein"
+            android:textSize="12sp"
+            android:background="#F5F5F5"
+            android:padding="12dp"
+            android:layout_marginTop="8dp"/>
+
+    </LinearLayout>
+</ScrollView>
