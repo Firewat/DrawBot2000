@@ -7,11 +7,10 @@
     android:gravity="center">
 
     <TextView
-        android:id="@+id/welcome_text_view"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Welcome to DrawBot"
-        android:textSize="20sp"
+        android:text="DrawBot Controller"
+        android:textSize="24sp"
         android:textStyle="bold"
         android:layout_marginBottom="48dp"
         android:gravity="center" />
@@ -29,7 +28,7 @@
         android:id="@+id/draw_button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Drawing Controls"
+        android:text="Draw from SVG"
         android:textSize="18sp"
         android:padding="16dp" />
 

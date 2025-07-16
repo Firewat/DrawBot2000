@@ -24,59 +24,47 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Firebase initialisieren
+        // Initialize Firebase Auth
         mAuth = FirebaseAuth.getInstance();
 
-        // Bluetooth-Berechtigungen prüfen
+        // Check Bluetooth permissions
         checkBluetoothPermissions();
 
-        // Prüfen, ob Benutzer bereits angemeldet ist
+        // Check if user is already logged in
         FirebaseUser currentUser = mAuth.getCurrentUser();
 
         if (currentUser != null) {
-            // Benutzer ist angemeldet - zur Hauptseite weiterleiten
+            // User is logged in - redirect to home page
             startActivity(new Intent(MainActivity.this, HomeActivity.class));
         } else {
-            // Benutzer ist nicht angemeldet - zum Login weiterleiten
+            // User is not logged in - redirect to login
             startActivity(new Intent(MainActivity.this, LoginActivity.class));
         }
         finish();
     }
 
     private void checkBluetoothPermissions() {
-        // Berechtigungen prüfen basierend auf Android-Version
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Android 12+ (API 31+) - neue Bluetooth-Berechtigungen
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) !=
                     PackageManager.PERMISSION_GRANTED ||
                     ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) !=
-                            PackageManager.PERMISSION_GRANTED ||
-                    ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) !=
-                            PackageManager.PERMISSION_GRANTED) {
+                    PackageManager.PERMISSION_GRANTED) {
 
                 ActivityCompat.requestPermissions(this,
-                        new String[]{
-                                Manifest.permission.BLUETOOTH_CONNECT,
-                                Manifest.permission.BLUETOOTH_SCAN,
-                                Manifest.permission.ACCESS_FINE_LOCATION
-                        },
+                        new String[]{Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN},
                         REQUEST_BLUETOOTH_PERMISSIONS);
             }
         } else {
-            // Android 11 und früher - klassische Bluetooth-Berechtigungen
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH) !=
                     PackageManager.PERMISSION_GRANTED ||
                     ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADMIN) !=
-                            PackageManager.PERMISSION_GRANTED ||
+                    PackageManager.PERMISSION_GRANTED ||
                     ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) !=
-                            PackageManager.PERMISSION_GRANTED) {
+                    PackageManager.PERMISSION_GRANTED) {
 
                 ActivityCompat.requestPermissions(this,
-                        new String[]{
-                                Manifest.permission.BLUETOOTH,
-                                Manifest.permission.BLUETOOTH_ADMIN,
-                                Manifest.permission.ACCESS_FINE_LOCATION
-                        },
+                        new String[]{Manifest.permission.BLUETOOTH, Manifest.permission.BLUETOOTH_ADMIN,
+                                Manifest.permission.ACCESS_FINE_LOCATION},
                         REQUEST_BLUETOOTH_PERMISSIONS);
             }
         }
@@ -85,21 +73,16 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
         if (requestCode == REQUEST_BLUETOOTH_PERMISSIONS) {
-            boolean allGranted = true;
-
+            boolean allPermissionsGranted = true;
             for (int result : grantResults) {
                 if (result != PackageManager.PERMISSION_GRANTED) {
-                    allGranted = false;
+                    allPermissionsGranted = false;
                     break;
                 }
             }
-
-            if (allGranted) {
-                Toast.makeText(this, "Bluetooth-Berechtigungen erteilt", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(this, "Bluetooth-Berechtigungen sind für die App-Funktionalität erforderlich", Toast.LENGTH_LONG).show();
+            if (!allPermissionsGranted) {
+                Toast.makeText(this, "Bluetooth permissions are required for this app", Toast.LENGTH_LONG).show();
             }
         }
     }

@@ -12,6 +12,8 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.View;
@@ -19,12 +21,16 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 
 public class BluetoothTerminalActivity extends AppCompatActivity {
@@ -43,26 +49,55 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
     private Button btnRefreshDevices;
     private Button btnTestCircle;
     private Button btnHome;
-    private Button btnSelectImage;
-    private Button btnDrawImage;
     private Button btnPreviewGCode;
+    private Button btnDrawImage;
     private EditText etImageSize;
     private EditText etThreshold;
-    private EditText etLineSpacing;
-    private EditText etFeedRate;
-    private CheckBox cbOptimizePath;
-    private CheckBox cbInvertImage;
+
+    // Multi-line G-code variables
+    private EditText etGCodeInput;
+    private Button btnSendGCode;
+    private Button btnPauseGCode;
+    private Button btnStopGCode;
+    private TextView tvGCodeProgress;
+    private TextView tvGCodeDelay;
+    private EditText etGCodeDelay;
+
+    // G-code sending control
+    private List<String> gCodeQueue = new ArrayList<>();
+    private int currentGCodeIndex = 0;
+    private boolean isGCodeRunning = false;
+    private boolean isGCodePaused = false;
+    private Handler gCodeHandler = new Handler(Looper.getMainLooper());
+    private Runnable gCodeRunnable;
+    private int gCodeDelay = 100; // Default delay in milliseconds
+
+    // SCARA-spezifische UI-Elemente
+    private CheckBox cbScaraMode;
+    private EditText etArm1Length;
+    private EditText etArm2Length;
+    private EditText etOffsetX;
+    private EditText etOffsetY;
+
     private TextView tvSelectedImage;
     private TextView tvGCodeStats;
     private ProgressBar progressBarImage;
     private TextView tvProgressText;
     private Spinner spinnerDevices;
     private Spinner spinnerConversionMode;
+    private ImageView ivImagePreview; // Vorschau-ImageView hinzufügen
 
     private ArrayList<BluetoothDevice> deviceList;
     private StringBuilder terminalOutput = new StringBuilder();
     private Uri selectedImageUri = null;
     private ImageToGCodeConverter.GCodeResult lastGCodeResult = null;
+    private SimpleImageToGCodeConverter.SimpleResult lastSimpleResult = null; // Neue Variable für SimpleResult
+
+    // Weitere UI-Elemente
+    private EditText etLineSpacing;
+    private EditText etFeedRate;
+    private CheckBox cbOptimizePath;
+    private CheckBox cbInvertImage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,21 +116,44 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
         btnRefreshDevices = findViewById(R.id.btnRefreshDevices);
         btnTestCircle = findViewById(R.id.btnTestCircle);
         btnHome = findViewById(R.id.btnHome);
-        btnSelectImage = findViewById(R.id.btnSelectImage);
-        btnDrawImage = findViewById(R.id.btnDrawImage);
         btnPreviewGCode = findViewById(R.id.btnPreviewGCode);
+        btnDrawImage = findViewById(R.id.btnDrawImage);
+        Button btnSelectSvg = findViewById(R.id.btnSelectSvg);
+        btnSelectSvg.setOnClickListener(v -> selectImage());
+        // Button zum Auswählen/Hochladen immer aktivieren
+        btnPreviewGCode.setEnabled(true);
+        btnDrawImage.setEnabled(true);
         etImageSize = findViewById(R.id.etImageSize);
         etThreshold = findViewById(R.id.etThreshold);
         etLineSpacing = findViewById(R.id.etLineSpacing);
         etFeedRate = findViewById(R.id.etFeedRate);
         cbOptimizePath = findViewById(R.id.cbOptimizePath);
         cbInvertImage = findViewById(R.id.cbInvertImage);
+
+        // SCARA-spezifische UI-Elemente
+        cbScaraMode = findViewById(R.id.cbScaraMode);
+        etArm1Length = findViewById(R.id.etArm1Length);
+        etArm2Length = findViewById(R.id.etArm2Length);
+        etOffsetX = findViewById(R.id.etOffsetX);
+        etOffsetY = findViewById(R.id.etOffsetY);
+
         tvSelectedImage = findViewById(R.id.tvSelectedImage);
         tvGCodeStats = findViewById(R.id.tvGCodeStats);
         progressBarImage = findViewById(R.id.progressBarImage);
         tvProgressText = findViewById(R.id.tvProgressText);
         spinnerDevices = findViewById(R.id.spinnerDevices);
         spinnerConversionMode = findViewById(R.id.spinnerConversionMode);
+        ivImagePreview = findViewById(R.id.ivImagePreview); // Vorschau-ImageView initialisieren
+        btnPreviewGCode = findViewById(R.id.btnPreviewGCode); // Vorschau-Button initialisieren
+
+        // Multi-line G-code UI elements
+        etGCodeInput = findViewById(R.id.etGCodeInput);
+        btnSendGCode = findViewById(R.id.btnSendGCode);
+        btnPauseGCode = findViewById(R.id.btnPauseGCode);
+        btnStopGCode = findViewById(R.id.btnStopGCode);
+        tvGCodeProgress = findViewById(R.id.tvGCodeProgress);
+        tvGCodeDelay = findViewById(R.id.tvGCodeDelay);
+        etGCodeDelay = findViewById(R.id.etGCodeDelay);
 
         // Terminal sollte scrollbar sein
         tvTerminal.setMovementMethod(new ScrollingMovementMethod());
@@ -143,9 +201,21 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
             btnSend.setEnabled(connected);
             btnTestCircle.setEnabled(connected);
             btnHome.setEnabled(connected);
-            btnSelectImage.setEnabled(connected);
-            btnDrawImage.setEnabled(connected);
+            cbOptimizePath.setEnabled(connected);
+            cbInvertImage.setEnabled(connected);
             etCommand.setEnabled(connected);
+            etImageSize.setEnabled(connected);
+            etThreshold.setEnabled(connected);
+            etLineSpacing.setEnabled(connected);
+            etFeedRate.setEnabled(connected);
+            spinnerConversionMode.setEnabled(connected);
+
+            // Enable multi-line G-code input and controls
+            etGCodeInput.setEnabled(connected);
+            btnSendGCode.setEnabled(connected);
+            btnPauseGCode.setEnabled(connected && isGCodeRunning);
+            btnStopGCode.setEnabled(connected && isGCodeRunning);
+            etGCodeDelay.setEnabled(connected);
 
             if (connected) {
                 Toast.makeText(BluetoothTerminalActivity.this, "Verbunden", Toast.LENGTH_SHORT).show();
@@ -205,29 +275,45 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
             goHome();
         });
 
-        // Bild auswählen
-        btnSelectImage.setOnClickListener(v -> {
-            selectImage();
-        });
-
-        // Bild zeichnen
-        btnDrawImage.setOnClickListener(v -> {
-            drawImageAdvanced();
-        });
-
-        // Vorschau G-Code
-        btnPreviewGCode.setOnClickListener(v -> {
-            previewGCode();
-        });
 
         // Diagnose-Button hinzufügen (temporär für Debugging)
         btnTestCircle.setOnLongClickListener(v -> {
-            testConnection();
+            if (cbScaraMode.isChecked()) {
+                runScaraCalibration();
+            } else {
+                testConnection();
+            }
             return true;
         });
 
         // Konvertierungsmodus-Spinner initialisieren
         setupConversionModeSpinner();
+
+        // Bild zeichnen Button
+        btnDrawImage.setOnClickListener(v -> drawImageAdvanced());
+
+        // G-Code senden Button
+        btnSendGCode.setOnClickListener(v -> sendGCodeCommands());
+        btnPauseGCode.setOnClickListener(v -> toggleGCodePause());
+        btnStopGCode.setOnClickListener(v -> stopGCodeCommands());
+
+        // SCARA Calibration Button
+        btnTestCircle.setOnLongClickListener(v -> {
+            if (cbScaraMode.isChecked()) {
+                runScaraCalibration();
+            } else {
+                testConnection();
+            }
+            return true;
+        });
+
+        // Add SCARA line test button functionality
+        btnHome.setOnLongClickListener(v -> {
+            if (cbScaraMode.isChecked()) {
+                testScaraLineDrawing();
+            }
+            return true;
+        });
     }
 
     private void setupConversionModeSpinner() {
@@ -300,62 +386,173 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
             try {
                 runOnUiThread(() -> {
                     tvGCodeStats.setVisibility(View.VISIBLE);
-                    tvGCodeStats.setText("Generiere Vorschau...");
+                    tvGCodeStats.setText("Generiere G-Code...");
                 });
 
-                ImageToGCodeConverter.GCodeResult result =
-                        ImageToGCodeConverter.convertImageToGCode(this, selectedImageUri, settings);
+                // Prüfe ob es sich um eine SVG-Datei handelt
+                String fileName = selectedImageUri.getLastPathSegment();
+                boolean isSvg = fileName != null && (fileName.toLowerCase().endsWith(".svg") ||
+                                fileName.toLowerCase().contains("svg"));
 
-                lastGCodeResult = result;
+                if (isSvg) {
+                    // SVG-CONVERTER verwenden
+                    terminalOutput.append("[SVG-DATEI ERKANNT - VERWENDE SVG-CONVERTER]\n");
+                    updateTerminalDisplay();
 
-                runOnUiThread(() -> {
-                    if (result.gCodeCommands.isEmpty() || result.gCodeCommands.get(0).startsWith("; FEHLER")) {
-                        tvGCodeStats.setText("❌ Fehler bei der Konvertierung");
-                        tvGCodeStats.setBackgroundColor(getResources().getColor(android.R.color.holo_red_light));
-                        Toast.makeText(BluetoothTerminalActivity.this, "Fehler bei der G-Code-Generierung!", Toast.LENGTH_SHORT).show();
+                    SimpleSvgToGCodeConverter.Settings svgSettings = new SimpleSvgToGCodeConverter.Settings();
+                    svgSettings.drawingWidthMM = settings.targetWidthMM;
+                    svgSettings.drawingHeightMM = settings.targetHeightMM;
+                    svgSettings.feedRateMM_Min = settings.feedRate;
+                    svgSettings.penUpZ = settings.penUpZ;
+                    svgSettings.penDownZ = settings.penDownZ;
+
+                    // SCARA-spezifische Einstellungen aus UI übernehmen
+                    if (cbScaraMode != null && cbScaraMode.isChecked()) {
+                        svgSettings.isScaraMode = true;
+                        try {
+                            svgSettings.arm1Length = Float.parseFloat(etArm1Length.getText().toString().trim());
+                            svgSettings.arm2Length = Float.parseFloat(etArm2Length.getText().toString().trim());
+                            svgSettings.offsetX = Float.parseFloat(etOffsetX.getText().toString().trim());
+                            svgSettings.offsetY = Float.parseFloat(etOffsetY.getText().toString().trim());
+                        } catch (NumberFormatException e) {
+                            // Fallback-Werte verwenden
+                            svgSettings.arm1Length = 100.0f;
+                            svgSettings.arm2Length = 100.0f;
+                            svgSettings.offsetX = 0.0f;
+                            svgSettings.offsetY = 100.0f;
+                        }
                     } else {
-                        String stats = String.format(
-                                "✅ Vorschau:\n" +
-                                "Modus: %s\n" +
-                                "Befehle: %d\n" +
-                                "Bewegungen: %d (%d zeichnend)\n" +
-                                "Distanz: %.1f mm\n" +
-                                "Geschätzte Zeit: %.1f Sekunden",
-                                settings.mode.name().replace("_", " "),
-                                result.totalCommands,
-                                result.totalMoves,
-                                result.drawingMoves,
-                                result.totalDistance,
-                                result.estimatedTime
-                        );
-                        tvGCodeStats.setText(stats);
-                        tvGCodeStats.setBackgroundColor(getResources().getColor(android.R.color.holo_green_light));
-
-                        // Aktiviere Draw-Button
-                        btnDrawImage.setEnabled(bluetoothHelper.isConnected());
-
-                        // Zeige ersten G-Code im Terminal
-                        terminalOutput.append("[G-CODE VORSCHAU GENERIERT]\n");
-                        terminalOutput.append(String.format("[MODUS: %s]\n", settings.mode.name()));
-                        terminalOutput.append(String.format("[BEFEHLE: %d, ZEIT: %.1fs]\n", result.totalCommands, result.estimatedTime));
-
-                        // Zeige erste 5 G-Code-Zeilen als Beispiel
-                        terminalOutput.append("[ERSTE 5 BEFEHLE:]\n");
-                        for (int i = 0; i < Math.min(5, result.gCodeCommands.size()); i++) {
-                            terminalOutput.append("  ").append(result.gCodeCommands.get(i)).append("\n");
-                        }
-                        if (result.gCodeCommands.size() > 5) {
-                            terminalOutput.append("  ... (").append(result.gCodeCommands.size() - 5).append(" weitere)\n");
-                        }
-                        updateTerminalDisplay();
+                        svgSettings.isScaraMode = false;
                     }
-                });
+
+                    SimpleSvgToGCodeConverter.Result svgResult =
+                            SimpleSvgToGCodeConverter.convertSvgToGCode(this, selectedImageUri, svgSettings);
+
+                    // Konvertiere zu SimpleResult für Kompatibilität
+                    SimpleImageToGCodeConverter.SimpleResult result = new SimpleImageToGCodeConverter.SimpleResult(svgResult.gCodeLines);
+                    result.totalCommands = svgResult.totalCommands;
+                    result.estimatedTime = 0; // SimpleSvgToGCodeConverter hat keine Zeitschätzung
+                    result.summary = svgResult.summary;
+
+                    lastSimpleResult = result;
+
+                    runOnUiThread(() -> {
+                        if (!svgResult.success || svgResult.gCodeLines.isEmpty() || svgResult.gCodeLines.get(0).startsWith("; FEHLER")) {
+                            tvGCodeStats.setText("❌ Fehler bei der SVG-Konvertierung: " + svgResult.errorMessage);
+                            tvGCodeStats.setBackgroundColor(getResources().getColor(android.R.color.holo_red_light));
+                            Toast.makeText(BluetoothTerminalActivity.this, "Fehler bei der SVG-Konvertierung!", Toast.LENGTH_SHORT).show();
+
+                            // Zeige Debug-Info im Terminal
+                            terminalOutput.append("[SVG-KONVERTIERUNGSFEHLER]\n");
+                            terminalOutput.append("[GRUND: " + svgResult.errorMessage + "]\n");
+                            if (!svgResult.gCodeLines.isEmpty()) {
+                                terminalOutput.append("[DEBUG-INFO:]\n");
+                                for (int i = 0; i < Math.min(3, svgResult.gCodeLines.size()); i++) {
+                                    terminalOutput.append("  " + svgResult.gCodeLines.get(i) + "\n");
+                                }
+                            }
+                            updateTerminalDisplay();
+                        } else {
+                            String stats = String.format(
+                                    "✅ SVG-G-Code erstellt:\n" +
+                                    "Befehle: %d\n" +
+                                    "Größe: %d x %d mm\n" +
+                                    "Distanz: %.1f mm\n" +
+                                    "Geschätzte Zeit: %.1f Sekunden",
+                                    result.totalCommands,
+                                    (int)svgSettings.drawingWidthMM,
+                                    (int)svgSettings.drawingHeightMM,
+                                    svgResult.totalDistance,
+                                    result.estimatedTime
+                            );
+                            tvGCodeStats.setText(stats);
+                            tvGCodeStats.setBackgroundColor(getResources().getColor(android.R.color.holo_green_light));
+
+
+                            // Zeige G-Code im Terminal
+                            terminalOutput.append("[SVG-G-CODE ERFOLGREICH GENERIERT]\n");
+                            terminalOutput.append(String.format("[BEFEHLE: %d]\n", result.totalCommands));
+                            terminalOutput.append(String.format("[GRÖßE: %dx%d mm, DISTANZ: %.1fmm]\n",
+                                (int)svgSettings.drawingWidthMM, (int)svgSettings.drawingHeightMM, svgResult.totalDistance));
+
+                            // Zeige erste 5 G-Code-Zeilen als Beispiel
+                            terminalOutput.append("[ERSTE 5 BEFEHLE:]\n");
+                            for (int i = 0; i < Math.min(5, result.gCodeCommands.size()); i++) {
+                                terminalOutput.append("  ").append(result.gCodeCommands.get(i)).append("\n");
+                            }
+                            if (result.gCodeCommands.size() > 5) {
+                                terminalOutput.append("  ... (").append(result.gCodeCommands.size() - 5).append(" weitere)\n");
+                            }
+                            updateTerminalDisplay();
+                        }
+                    });
+
+                } else {
+                    // BITMAP-CONVERTER verwenden (wie vorher)
+                    SimpleImageToGCodeConverter.SimpleSettings simpleSettings = new SimpleImageToGCodeConverter.SimpleSettings();
+                    simpleSettings.targetWidthMM = settings.targetWidthMM;
+                    simpleSettings.targetHeightMM = settings.targetHeightMM;
+                    simpleSettings.threshold = settings.threshold;
+                    simpleSettings.lineSpacing = settings.lineSpacing;
+                    simpleSettings.feedRate = settings.feedRate;
+                    simpleSettings.travelSpeed = settings.travelSpeed;
+                    simpleSettings.penUpZ = settings.penUpZ;
+                    simpleSettings.penDownZ = settings.penDownZ;
+                    simpleSettings.invertImage = settings.invertImage;
+
+                    SimpleImageToGCodeConverter.SimpleResult result =
+                            SimpleImageToGCodeConverter.convertImageToGCode(this, selectedImageUri, simpleSettings);
+
+                    lastGCodeResult = null;
+                    lastSimpleResult = result;
+
+                    runOnUiThread(() -> {
+                        if (result.gCodeCommands.isEmpty() || result.gCodeCommands.get(0).startsWith("; FEHLER")) {
+                            tvGCodeStats.setText("❌ Fehler bei der Konvertierung");
+                            tvGCodeStats.setBackgroundColor(getResources().getColor(android.R.color.holo_red_light));
+                            Toast.makeText(BluetoothTerminalActivity.this, "Fehler bei der G-Code-Generierung!", Toast.LENGTH_SHORT).show();
+                        } else {
+                            String stats = String.format(
+                                    "✅ G-Code erstellt:\n" +
+                                    "Befehle: %d\n" +
+                                    "Größe: %d x %d mm\n" +
+                                    "Linienabstand: %.1f mm\n" +
+                                    "Schwellwert: %d\n" +
+                                    "Geschätzte Zeit: %.1f Sekunden",
+                                    result.totalCommands,
+                                    simpleSettings.targetWidthMM,
+                                    simpleSettings.targetHeightMM,
+                                    simpleSettings.lineSpacing,
+                                    simpleSettings.threshold,
+                                    result.estimatedTime
+                            );
+                            tvGCodeStats.setText(stats);
+                            tvGCodeStats.setBackgroundColor(getResources().getColor(android.R.color.holo_green_light));
+
+
+                            terminalOutput.append("[G-CODE ERFOLGREICH GENERIERT]\n");
+                            terminalOutput.append(String.format("[BEFEHLE: %d]\n", result.totalCommands));
+                            terminalOutput.append(String.format("[GRÖßE: %dx%d mm]\n", simpleSettings.targetWidthMM, simpleSettings.targetHeightMM));
+
+                            terminalOutput.append("[ERSTE 5 BEFEHLE:]\n");
+                            for (int i = 0; i < Math.min(5, result.gCodeCommands.size()); i++) {
+                                terminalOutput.append("  ").append(result.gCodeCommands.get(i)).append("\n");
+                            }
+                            if (result.gCodeCommands.size() > 5) {
+                                terminalOutput.append("  ... (").append(result.gCodeCommands.size() - 5).append(" weitere)\n");
+                            }
+                            updateTerminalDisplay();
+                        }
+                    });
+                }
 
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     tvGCodeStats.setText("❌ Fehler: " + e.getMessage());
                     tvGCodeStats.setBackgroundColor(getResources().getColor(android.R.color.holo_red_light));
                     Toast.makeText(BluetoothTerminalActivity.this, "Fehler: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    terminalOutput.append("[FEHLER bei G-Code-Generierung: " + e.getMessage() + "]\n");
+                    updateTerminalDisplay();
                 });
             }
         }).start();
@@ -376,12 +573,12 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
         }
 
         // Verwende bereits generierten G-Code wenn verfügbar
-        if (lastGCodeResult != null) {
-            sendGCodeCommandsWithProgress(lastGCodeResult.gCodeCommands);
+        if (lastSimpleResult != null) {
+            sendGCodeCommandsWithProgress(lastSimpleResult.gCodeCommands);
             return;
         }
 
-        // Ansonsten generiere neuen G-Code
+        // Ansonsten generiere neuen G-Code mit dem einfachen Converter
         ImageToGCodeConverter.ConversionSettings settings = createConversionSettings();
 
         // Validierung
@@ -395,11 +592,10 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
             progressBarImage.setVisibility(View.VISIBLE);
             tvProgressText.setVisibility(View.VISIBLE);
             progressBarImage.setProgress(0);
-            tvProgressText.setText("Starte erweiterte Bildverarbeitung...");
-            btnDrawImage.setEnabled(false);
+            tvProgressText.setText("Starte Bildkonvertierung...");
         });
 
-        terminalOutput.append(String.format("[STARTE ERWEITERTE KONVERTIERUNG - Modus: %s]\n", settings.mode.name()));
+        terminalOutput.append("[STARTE BILDKONVERTIERUNG]\n");
         terminalOutput.append(String.format("[EINSTELLUNGEN: %dmm, Schwellwert: %d, Linienabstand: %.1fmm]\n",
                 settings.targetWidthMM, settings.threshold, settings.lineSpacing));
         updateTerminalDisplay();
@@ -413,35 +609,114 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
                     tvProgressText.setText("Analysiere Bild...");
                 });
 
+                // Prüfe ob es sich um eine SVG-Datei handelt
+                String fileName = selectedImageUri.getLastPathSegment();
+                boolean isSvg = fileName != null && (fileName.toLowerCase().endsWith(".svg") || fileName.toLowerCase().contains("svg"));
+
+                if (isSvg) {
+                    // SVG-Konvertierung
+                    SimpleSvgToGCodeConverter.Settings svgSettings = new SimpleSvgToGCodeConverter.Settings();
+                    svgSettings.drawingWidthMM = settings.targetWidthMM;
+                    svgSettings.drawingHeightMM = settings.targetHeightMM;
+                    svgSettings.feedRateMM_Min = settings.feedRate;
+                    svgSettings.penUpZ = settings.penUpZ;
+                    svgSettings.penDownZ = settings.penDownZ;
+
+                    // SCARA-spezifische Einstellungen aus UI übernehmen
+                    if (cbScaraMode != null && cbScaraMode.isChecked()) {
+                        svgSettings.isScaraMode = true;
+                        try {
+                            svgSettings.arm1Length = Float.parseFloat(etArm1Length.getText().toString().trim());
+                            svgSettings.arm2Length = Float.parseFloat(etArm2Length.getText().toString().trim());
+                            svgSettings.offsetX = Float.parseFloat(etOffsetX.getText().toString().trim());
+                            svgSettings.offsetY = Float.parseFloat(etOffsetY.getText().toString().trim());
+                        } catch (NumberFormatException e) {
+                            // Fallback-Werte verwenden
+                            svgSettings.arm1Length = 100.0f;
+                            svgSettings.arm2Length = 100.0f;
+                            svgSettings.offsetX = 0.0f;
+                            svgSettings.offsetY = 100.0f;
+                        }
+                    } else {
+                        svgSettings.isScaraMode = false;
+                    }
+
+                    SimpleSvgToGCodeConverter.Result svgResult =
+                        SimpleSvgToGCodeConverter.convertSvgToGCode(this, selectedImageUri, svgSettings);
+
+                    SimpleImageToGCodeConverter.SimpleResult result = new SimpleImageToGCodeConverter.SimpleResult(svgResult.gCodeLines);
+                    result.totalCommands = svgResult.totalCommands;
+                    result.estimatedTime = 0; // SimpleSvgToGCodeConverter hat keine Zeitschätzung
+                    result.summary = svgResult.summary;
+
+                    lastSimpleResult = result;
+
+                    if (result.gCodeCommands.isEmpty() || result.gCodeCommands.get(0).startsWith("; FEHLER")) {
+                        runOnUiThread(() -> {
+                            progressBarImage.setVisibility(View.GONE);
+                            tvProgressText.setVisibility(View.GONE);
+                            terminalOutput.append("[FEHLER BEI DER SVG-KONVERTIERUNG]\n");
+                            updateTerminalDisplay();
+                            Toast.makeText(BluetoothTerminalActivity.this, "Fehler bei der SVG-Konvertierung!", Toast.LENGTH_SHORT).show();
+                        });
+                        return;
+                    }
+
+                    // Phase 3: Bereit zum Senden (75%)
+                    runOnUiThread(() -> {
+                        progressBarImage.setProgress(75);
+                        tvProgressText.setText(String.format("Bereit: %d Befehle generiert", result.totalCommands));
+                        terminalOutput.append("[SVG-KONVERTIERUNG ABGESCHLOSSEN]\n");
+                        terminalOutput.append(String.format("SVG-G-Code: %d Befehle generiert\n", result.totalCommands));
+                        terminalOutput.append("[STARTE ÜBERTRAGUNG...]\n");
+                        updateTerminalDisplay();
+                    });
+
+                    // Phase 4: G-Code senden (75-100%)
+                    sendGCodeCommandsWithProgress(result.gCodeCommands);
+                    return;
+                }
+
                 // Phase 2: G-Code Konvertierung (50%)
                 runOnUiThread(() -> {
                     progressBarImage.setProgress(50);
-                    tvProgressText.setText("Generiere " + settings.mode.name() + " G-Code...");
+                    tvProgressText.setText("Generiere G-Code...");
                 });
 
-                ImageToGCodeConverter.GCodeResult result =
-                        ImageToGCodeConverter.convertImageToGCode(this, selectedImageUri, settings);
+                // Verwende den einfachen Converter
+                SimpleImageToGCodeConverter.SimpleSettings simpleSettings = new SimpleImageToGCodeConverter.SimpleSettings();
+                simpleSettings.targetWidthMM = settings.targetWidthMM;
+                simpleSettings.targetHeightMM = settings.targetHeightMM;
+                simpleSettings.threshold = settings.threshold;
+                simpleSettings.lineSpacing = settings.lineSpacing;
+                simpleSettings.feedRate = settings.feedRate;
+                simpleSettings.travelSpeed = settings.travelSpeed;
+                simpleSettings.penUpZ = settings.penUpZ;
+                simpleSettings.penDownZ = settings.penDownZ;
+                simpleSettings.invertImage = settings.invertImage;
+
+                SimpleImageToGCodeConverter.SimpleResult result =
+                        SimpleImageToGCodeConverter.convertImageToGCode(this, selectedImageUri, simpleSettings);
 
                 if (result.gCodeCommands.isEmpty() || result.gCodeCommands.get(0).startsWith("; FEHLER")) {
                     runOnUiThread(() -> {
                         progressBarImage.setVisibility(View.GONE);
                         tvProgressText.setVisibility(View.GONE);
-                        btnDrawImage.setEnabled(true);
-                        terminalOutput.append("[FEHLER BEI DER ERWEITERTEN KONVERTIERUNG]\n");
+                        terminalOutput.append("[FEHLER BEI DER KONVERTIERUNG]\n");
                         updateTerminalDisplay();
                         Toast.makeText(BluetoothTerminalActivity.this, "Fehler bei der Bildkonvertierung!", Toast.LENGTH_SHORT).show();
                     });
                     return;
                 }
 
-                lastGCodeResult = result;
+                lastSimpleResult = result;
 
                 // Phase 3: Bereit zum Senden (75%)
                 runOnUiThread(() -> {
                     progressBarImage.setProgress(75);
                     tvProgressText.setText(String.format("Bereit: %d Befehle generiert", result.totalCommands));
-                    terminalOutput.append(String.format("[ERWEITERTE KONVERTIERUNG ABGESCHLOSSEN]\n"));
-                    terminalOutput.append(result.summary).append("\n");
+                    terminalOutput.append("[KONVERTIERUNG ABGESCHLOSSEN]\n");
+                    terminalOutput.append(String.format("G-Code: %d Befehle generiert\n", result.totalCommands));
                     terminalOutput.append("[STARTE ÜBERTRAGUNG...]\n");
                     updateTerminalDisplay();
                 });
@@ -453,10 +728,187 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     progressBarImage.setVisibility(View.GONE);
                     tvProgressText.setVisibility(View.GONE);
-                    btnDrawImage.setEnabled(true);
                     terminalOutput.append("[FEHLER: ").append(e.getMessage()).append("]\n");
                     updateTerminalDisplay();
                     Toast.makeText(BluetoothTerminalActivity.this, "Fehler: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
+        }).start();
+    }
+
+    /**
+     * Führt die SCARA-Kalibrierung durch
+     */
+    private void runScaraCalibration() {
+        if (!bluetoothHelper.isConnected()) {
+            Toast.makeText(this, "Nicht verbunden!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        terminalOutput.append("[STARTE SCARA-KALIBRIERUNG]\n");
+        updateTerminalDisplay();
+
+        // Create SCARA configuration from UI
+        ScaraKinematics.ScaraConfig config = createScaraConfig();
+
+        // Generate calibration sequence
+        List<String> calibrationCommands = ScaraKinematics.generateCalibrationSequence(config);
+
+        terminalOutput.append(String.format("[SCARA-KONFIGURATION: Arm1=%.1fmm, Arm2=%.1fmm, Offset=(%.1f,%.1f)]\n",
+                config.arm1Length, config.arm2Length, config.offsetX, config.offsetY));
+        updateTerminalDisplay();
+
+        // Send calibration commands
+        sendCommandSequence(calibrationCommands, "SCARA-Kalibrierung");
+    }
+
+    /**
+     * Testet das Zeichnen einer glatten Linie mit SCARA-Kinematics
+     */
+    private void testScaraLineDrawing() {
+        if (!bluetoothHelper.isConnected()) {
+            Toast.makeText(this, "Nicht verbunden!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        terminalOutput.append("[STARTE SCARA SMOOTH LINE TEST]\n");
+        updateTerminalDisplay();
+
+        // Create SCARA configuration from UI
+        ScaraKinematics.ScaraConfig config = createScaraConfig();
+
+        List<String> testCommands = new ArrayList<>();
+        testCommands.add("; SCARA Smooth Line Drawing Test");
+        testCommands.add("$X ; Unlock");
+        testCommands.add("G21 ; mm");
+        testCommands.add("G90 ; Absolute positioning");
+        testCommands.add("G0 Z" + config.penUpZ + " ; Pen up");
+
+        // Test different line types
+        ScaraKinematics.Point[] testLines = {
+            // Horizontal line
+            new ScaraKinematics.Point(config.offsetX + 50, config.offsetY + 50, config.penUpZ),
+            new ScaraKinematics.Point(config.offsetX + 50, config.offsetY + 50, config.penDownZ),
+            new ScaraKinematics.Point(config.offsetX + 100, config.offsetY + 50, config.penDownZ),
+            new ScaraKinematics.Point(config.offsetX + 100, config.offsetY + 50, config.penUpZ),
+
+            // Vertical line
+            new ScaraKinematics.Point(config.offsetX + 75, config.offsetY + 30, config.penUpZ),
+            new ScaraKinematics.Point(config.offsetX + 75, config.offsetY + 30, config.penDownZ),
+            new ScaraKinematics.Point(config.offsetX + 75, config.offsetY + 80, config.penDownZ),
+            new ScaraKinematics.Point(config.offsetX + 75, config.offsetY + 80, config.penUpZ),
+
+            // Diagonal line
+            new ScaraKinematics.Point(config.offsetX + 50, config.offsetY + 30, config.penUpZ),
+            new ScaraKinematics.Point(config.offsetX + 50, config.offsetY + 30, config.penDownZ),
+            new ScaraKinematics.Point(config.offsetX + 100, config.offsetY + 80, config.penDownZ),
+            new ScaraKinematics.Point(config.offsetX + 100, config.offsetY + 80, config.penUpZ)
+        };
+
+        // Process each line segment
+        for (int i = 0; i < testLines.length - 1; i++) {
+            ScaraKinematics.Point start = testLines[i];
+            ScaraKinematics.Point end = testLines[i + 1];
+
+            if (start.z != end.z) {
+                // Z-axis movement only
+                ScaraKinematics.JointAngles angles = ScaraKinematics.inverseKinematics(start.x, start.y, config);
+                if (angles.valid) {
+                    testCommands.add(String.format(java.util.Locale.US,
+                        "G1 A%.3f B%.3f Z%.1f F500", angles.angle1, angles.angle2, end.z));
+                }
+            } else {
+                // Smooth line interpolation
+                List<String> lineCommands = ScaraKinematics.interpolateLine(start, end, config, 800, 15);
+                testCommands.addAll(lineCommands);
+            }
+        }
+
+        // Return to home
+        testCommands.add("G0 A0 B0 Z" + config.penUpZ + " ; Return to home");
+
+        // Send test commands
+        sendCommandSequence(testCommands, "SCARA Smooth Line Test");
+    }
+
+    /**
+     * Erstellt SCARA-Konfiguration aus UI-Eingaben
+     */
+    private ScaraKinematics.ScaraConfig createScaraConfig() {
+        ScaraKinematics.ScaraConfig config = new ScaraKinematics.ScaraConfig();
+
+        try {
+            config.arm1Length = Float.parseFloat(etArm1Length.getText().toString().trim());
+            config.arm2Length = Float.parseFloat(etArm2Length.getText().toString().trim());
+            config.offsetX = Float.parseFloat(etOffsetX.getText().toString().trim());
+            config.offsetY = Float.parseFloat(etOffsetY.getText().toString().trim());
+        } catch (NumberFormatException e) {
+            // Use default values if parsing fails
+            terminalOutput.append("[WARNUNG: Ungültige SCARA-Parameter, verwende Standardwerte]\n");
+            updateTerminalDisplay();
+        }
+
+        return config;
+    }
+
+    /**
+     * Sendet eine Befehlssequenz mit Fortschrittsanzeige
+     */
+    private void sendCommandSequence(List<String> commands, String sequenceName) {
+        new Thread(() -> {
+            try {
+                int totalCommands = commands.size();
+                int sentCommands = 0;
+
+                runOnUiThread(() -> {
+                    terminalOutput.append(String.format("[STARTE %s - %d Befehle]\n", sequenceName, totalCommands));
+                    updateTerminalDisplay();
+                });
+
+                for (String command : commands) {
+                    if (command.startsWith(";")) {
+                        // Comment - just show in terminal
+                        runOnUiThread(() -> {
+                            terminalOutput.append(command).append("\n");
+                            updateTerminalDisplay();
+                        });
+                        continue;
+                    }
+
+                    final String currentCommand = command;
+                    final int currentNum = ++sentCommands;
+
+                    runOnUiThread(() -> {
+                        terminalOutput.append(String.format("> %s [%d/%d]\n",
+                            currentCommand, currentNum, totalCommands));
+                        updateTerminalDisplay();
+                    });
+
+                    bluetoothHelper.sendData(command + "\n");
+
+                    // Different delays for different command types
+                    if (command.startsWith("G0") && command.contains("Z")) {
+                        Thread.sleep(800);  // Z movements need more time
+                    } else if (command.startsWith("G1") && command.contains("A") && command.contains("B")) {
+                        Thread.sleep(150);  // SCARA joint movements
+                    } else if (command.startsWith("G0") || command.startsWith("G1")) {
+                        Thread.sleep(400);  // Regular movements
+                    } else {
+                        Thread.sleep(200);  // Other commands
+                    }
+                }
+
+                runOnUiThread(() -> {
+                    terminalOutput.append(String.format("[%s ABGESCHLOSSEN!]\n", sequenceName));
+                    updateTerminalDisplay();
+                    Toast.makeText(BluetoothTerminalActivity.this, sequenceName + " abgeschlossen!",
+                        Toast.LENGTH_SHORT).show();
+                });
+
+            } catch (InterruptedException e) {
+                runOnUiThread(() -> {
+                    terminalOutput.append(String.format("[FEHLER: %s unterbrochen]\n", sequenceName));
+                    updateTerminalDisplay();
                 });
             }
         }).start();
@@ -553,6 +1005,10 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
                     String filePath = selectedImageUri.getPath();
                     tvSelectedImage.setText("Ausgewähltes Bild: " + filePath);
                     btnPreviewGCode.setEnabled(true);
+
+                    // Zeige Bildvorschau
+                    ivImagePreview.setImageURI(selectedImageUri);
+                    ivImagePreview.setVisibility(View.VISIBLE);
                 } else {
                     tvSelectedImage.setText("Kein Bild ausgewählt");
                     btnPreviewGCode.setEnabled(false);
@@ -571,10 +1027,69 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
      * Öffnet die Bildauswahl
      */
     private void selectImage() {
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        intent.setType("image/*");
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        startActivityForResult(Intent.createChooser(intent, "Bild auswählen"), REQUEST_SELECT_IMAGE);
+        // Zeige Dialog für Dateiauswahl
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Datei auswählen")
+               .setItems(new String[]{"Aus Speicher wählen", "Test-SVG verwenden"}, (dialog, which) -> {
+                   if (which == 0) {
+                       // Normale Dateiauswahl
+                       Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                       intent.setType("*/*");
+                       intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"image/*", "image/svg+xml", "text/plain"});
+                       intent.addCategory(Intent.CATEGORY_OPENABLE);
+                       startActivityForResult(Intent.createChooser(intent, "Bild oder SVG auswählen"), REQUEST_SELECT_IMAGE);
+                   } else {
+                       // Test-SVG aus Assets verwenden
+                       useTestSvgFromAssets();
+                   }
+               })
+               .show();
+    }
+
+    private void useTestSvgFromAssets() {
+        try {
+            // Erstelle Test-SVG-Inhalt direkt als String
+            String testSvgContent =
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                "<svg width=\"100\" height=\"100\" viewBox=\"0 0 100 100\" xmlns=\"http://www.w3.org/2000/svg\">\n" +
+                "  <!-- Test-Rechteck -->\n" +
+                "  <rect x=\"10\" y=\"10\" width=\"30\" height=\"20\" fill=\"none\" stroke=\"black\"/>\n" +
+                "  \n" +
+                "  <!-- Test-Kreis -->\n" +
+                "  <circle cx=\"70\" cy=\"25\" r=\"15\" fill=\"none\" stroke=\"black\"/>\n" +
+                "  \n" +
+                "  <!-- Test-Linie -->\n" +
+                "  <line x1=\"10\" y1=\"50\" x2=\"90\" y2=\"50\" stroke=\"black\"/>\n" +
+                "  \n" +
+                "  <!-- Test-Pfad -->\n" +
+                "  <path d=\"M 20 70 L 40 70 L 30 85 Z\" fill=\"none\" stroke=\"black\"/>\n" +
+                "</svg>";
+
+            // Erstelle temporäre Datei im app-eigenen Verzeichnis
+            java.io.File tempFile = new java.io.File(getCacheDir(), "embedded_test.svg");
+            java.io.FileOutputStream outputStream = new java.io.FileOutputStream(tempFile);
+
+            // Schreibe SVG-Inhalt in Datei
+            outputStream.write(testSvgContent.getBytes("UTF-8"));
+            outputStream.close();
+
+            // URI für die temporäre Datei setzen
+            selectedImageUri = Uri.fromFile(tempFile);
+
+            tvSelectedImage.setText("Eingebaute Test-SVG geladen");
+            btnPreviewGCode.setEnabled(true);
+
+            // Zeige SVG-Inhalt im Terminal für Debug
+            terminalOutput.append("[TEST-SVG GELADEN]\n");
+            terminalOutput.append("[INHALT: Rechteck, Kreis, Linie, Dreieck]\n");
+            updateTerminalDisplay();
+
+            Toast.makeText(this, "Test-SVG erfolgreich erstellt und geladen!", Toast.LENGTH_SHORT).show();
+
+        } catch (Exception e) {
+            Toast.makeText(this, "Fehler beim Erstellen der Test-SVG: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "Fehler beim Erstellen der Test-SVG", e);
+        }
     }
 
     private void loadPairedDevices() {
@@ -906,5 +1421,86 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
                 });
             }
         }).start();
+    }
+
+    /**
+     * Sendet die G-Code-Befehle aus dem mehrzeiligen Eingabefeld
+     */
+    private void sendGCodeCommands() {
+        String gCodeInput = etGCodeInput.getText().toString().trim();
+        if (gCodeInput.isEmpty()) {
+            Toast.makeText(this, "Bitte G-Code eingeben", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Teile den G-Code in einzelne Zeilen auf
+        String[] gCodeLines = gCodeInput.split("\n");
+        gCodeQueue = new ArrayList<>(Arrays.asList(gCodeLines));
+        currentGCodeIndex = 0;
+
+        // Starte das Senden der G-Code-Befehle
+        isGCodeRunning = true;
+        isGCodePaused = false;
+        sendNextGCodeCommand();
+    }
+
+    /**
+     * Sendet den nächsten G-Code-Befehl in der Warteschlange
+     */
+    private void sendNextGCodeCommand() {
+        if (!isGCodeRunning || currentGCodeIndex >= gCodeQueue.size()) {
+            // Stoppe den G-Code-Versand, wenn wir am Ende der Warteschlange sind
+            isGCodeRunning = false;
+            Toast.makeText(this, "G-Code Übertragung abgeschlossen", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String command = gCodeQueue.get(currentGCodeIndex);
+        currentGCodeIndex++;
+
+        // Sende den Befehl über Bluetooth
+        bluetoothHelper.sendData(command + "\n");
+
+        // Aktualisiere die Terminal-Anzeige
+        terminalOutput.append(String.format("> %s [%d/%d]\n", command, currentGCodeIndex, gCodeQueue.size()));
+        updateTerminalDisplay();
+
+        // Plane den nächsten Befehl mit der aktuellen Verzögerung
+        gCodeHandler.postDelayed(this::sendNextGCodeCommand, gCodeDelay);
+    }
+
+    /**
+     * Pausiert oder setzt den G-Code-Versand fort
+     */
+    private void toggleGCodePause() {
+        if (!isGCodeRunning) {
+            Toast.makeText(this, "G-Code wird gerade nicht gesendet", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        isGCodePaused = !isGCodePaused;
+
+        if (isGCodePaused) {
+            // Pausiere den Versand
+            gCodeHandler.removeCallbacks(gCodeRunnable);
+            terminalOutput.append("[G-Code Versand pausiert]\n");
+        } else {
+            // Setze den Versand fort
+            terminalOutput.append("[Setze G-Code Versand fort]\n");
+            sendNextGCodeCommand();
+        }
+
+        updateTerminalDisplay();
+    }
+
+    /**
+     * Stoppt den G-Code-Versand
+     */
+    private void stopGCodeCommands() {
+        isGCodeRunning = false;
+        isGCodePaused = false;
+        gCodeHandler.removeCallbacks(gCodeRunnable);
+        terminalOutput.append("[G-Code Versand gestoppt]\n");
+        updateTerminalDisplay();
     }
 }

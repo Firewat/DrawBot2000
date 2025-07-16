@@ -1,18 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-feature android:name="android.hardware.usb.host" />
 
-    <!-- Bluetooth-Berechtigungen -->
-    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /> <!-- Wird benötigt, um gepaarte Geräte zu finden -->
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
-                     android:usesPermissionFlags="neverForLocation"
-                     tools:targetApi="s" />
-    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
     <application
         android:allowBackup="true"
@@ -25,34 +22,52 @@
         android:theme="@style/Theme.DrawBot"
         tools:targetApi="31">
 
-        <activity android:name=".MainActivity" android:exported="true">
+        <!-- Login Activity as the main launcher -->
+        <activity
+            android:name=".LoginActivity"
+            android:exported="true"
+            android:theme="@style/Theme.DrawBot">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".LoginActivity" />
-        <activity android:name=".RegisterActivity" />
-        <activity android:name=".HomeActivity" />
-        <activity android:name=".BluetoothTerminalActivity"
-            android:exported="false"
-            android:label="Bluetooth Terminal" />
-        <activity android:name=".DrawActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
-            </intent-filter>
-            <meta-data android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
-                android:resource="@xml/device_filter" />
-        </activity>
 
-        <!-- Explizite Deklaration des BroadcastReceivers für USB-Permissions -->
-        <receiver android:name=".UsbPermissionReceiver"
-                 android:exported="false">
-            <intent-filter>
-                <action android:name="com.example.drawbot.USB_PERMISSION" />
-            </intent-filter>
-        </receiver>
+        <!-- Registration Activity -->
+        <activity
+            android:name=".RegisterActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DrawBot" />
+
+        <!-- Main Activity -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DrawBot" />
+
+        <!-- Home Activity -->
+        <activity
+            android:name=".HomeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DrawBot" />
+
+        <!-- Draw Activity -->
+        <activity
+            android:name=".DrawActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DrawBot" />
+
+        <!-- Bluetooth Terminal Activity -->
+        <activity
+            android:name=".BluetoothTerminalActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DrawBot" />
+
+        <!-- USB Permission Receiver -->
+        <receiver
+            android:name=".UsbPermissionReceiver"
+            android:exported="false" />
+
     </application>
 
 </manifest>

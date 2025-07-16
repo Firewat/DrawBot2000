@@ -1,112 +1,83 @@
 package com.example.drawbot;
 
-import android.Manifest;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.os.Build;
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.Button;
-import android.widget.Toast;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 public class HomeActivity extends AppCompatActivity {
 
     private Button bluetoothTerminalButton;
-    private static final int REQUEST_BLUETOOTH_PERMISSIONS = 200;
+    private Button drawButton;
+    private TextView welcomeTextView;
+    private FirebaseAuth mAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
 
-        // Nur noch der Bluetooth Terminal Button
-        bluetoothTerminalButton = findViewById(R.id.bluetooth_terminal_button);
+        // Initialize Firebase Auth
+        mAuth = FirebaseAuth.getInstance();
 
+        // Check if user is authenticated
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser == null) {
+            // User is not authenticated, redirect to login
+            startActivity(new Intent(HomeActivity.this, LoginActivity.class));
+            finish();
+            return;
+        }
+
+        // Initialize views
+        bluetoothTerminalButton = findViewById(R.id.bluetooth_terminal_button);
+        drawButton = findViewById(R.id.draw_button);
+        welcomeTextView = findViewById(R.id.welcome_text_view);
+
+        // Set welcome message
+        String email = currentUser.getEmail();
+        if (email != null) {
+            welcomeTextView.setText("Welcome, " + email);
+        } else {
+            welcomeTextView.setText("Welcome to DrawBot");
+        }
+
+        // Set up button listeners
         bluetoothTerminalButton.setOnClickListener(v -> {
-            if (checkBluetoothPermissions()) {
-                startActivity(new Intent(HomeActivity.this, BluetoothTerminalActivity.class));
-            } else {
-                requestBluetoothPermissions();
-            }
+            startActivity(new Intent(HomeActivity.this, BluetoothTerminalActivity.class));
+        });
+
+        drawButton.setOnClickListener(v -> {
+            startActivity(new Intent(HomeActivity.this, DrawActivity.class));
         });
     }
 
-    private boolean checkBluetoothPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Android 12+ (API 31+) - neue Bluetooth-Berechtigungen
-            boolean bluetoothConnect = ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED;
-            boolean bluetoothScan = ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED;
-            boolean location = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
-
-            // Debug-Information - zeige genau welche Berechtigung fehlt
-            String missingPermissions = "";
-            if (!bluetoothConnect) missingPermissions += "BLUETOOTH_CONNECT ";
-            if (!bluetoothScan) missingPermissions += "BLUETOOTH_SCAN ";
-            if (!location) missingPermissions += "ACCESS_FINE_LOCATION ";
-
-            if (!missingPermissions.isEmpty()) {
-                Toast.makeText(this, "Fehlende Berechtigungen: " + missingPermissions, Toast.LENGTH_LONG).show();
-                return false;
-            }
-
-            return true;
-        } else {
-            // Android 11 und früher - klassische Bluetooth-Berechtigungen
-            boolean bluetooth = ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH) == PackageManager.PERMISSION_GRANTED;
-            boolean bluetoothAdmin = ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADMIN) == PackageManager.PERMISSION_GRANTED;
-            boolean location = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
-
-            return bluetooth && bluetoothAdmin && location;
-        }
-    }
-
-    private void requestBluetoothPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Android 12+ - neue Bluetooth-Berechtigungen
-            ActivityCompat.requestPermissions(this,
-                    new String[]{
-                            Manifest.permission.BLUETOOTH_CONNECT,
-                            Manifest.permission.BLUETOOTH_SCAN,
-                            Manifest.permission.ACCESS_FINE_LOCATION
-                    },
-                    REQUEST_BLUETOOTH_PERMISSIONS);
-        } else {
-            // Android 11 und früher - klassische Bluetooth-Berechtigungen
-            ActivityCompat.requestPermissions(this,
-                    new String[]{
-                            Manifest.permission.BLUETOOTH,
-                            Manifest.permission.BLUETOOTH_ADMIN,
-                            Manifest.permission.ACCESS_FINE_LOCATION
-                    },
-                    REQUEST_BLUETOOTH_PERMISSIONS);
-        }
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.home_menu, menu);
+        return true;
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        int id = item.getItemId();
 
-        if (requestCode == REQUEST_BLUETOOTH_PERMISSIONS) {
-            boolean allGranted = true;
-
-            for (int result : grantResults) {
-                if (result != PackageManager.PERMISSION_GRANTED) {
-                    allGranted = false;
-                    break;
-                }
-            }
-
-            if (allGranted) {
-                Toast.makeText(this, "Bluetooth-Berechtigungen erteilt", Toast.LENGTH_SHORT).show();
-                // Terminal öffnen, nachdem Berechtigungen erteilt wurden
-                startActivity(new Intent(HomeActivity.this, BluetoothTerminalActivity.class));
-            } else {
-                Toast.makeText(this, "Bluetooth-Berechtigungen sind erforderlich für das Terminal", Toast.LENGTH_LONG).show();
-            }
+        if (id == R.id.action_logout) {
+            // Logout user
+            mAuth.signOut();
+            startActivity(new Intent(HomeActivity.this, LoginActivity.class));
+            finish();
+            return true;
         }
+
+        return super.onOptionsItemSelected(item);
     }
 }
