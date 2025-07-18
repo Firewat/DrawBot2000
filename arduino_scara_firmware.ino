@@ -1,257 +1,426 @@
 /*
   SCARA DrawBot Firmware für Arduino Uno R3
-  Basiert auf bewährter Firmware, erweitert um SCARA-Kinematik
-
-  Hardware:
-  - Arduino Uno R3
-  - 2x Stepper-Motoren (SCARA-Gelenke)
-  - 1x Servo (Z-Achse)
-  - HC-05/HC-06 Bluetooth-Modul
-
-  Verbindungen:
-  - Motor 1 (Schulter): Step=2, Dir=5
-  - Motor 2 (Ellbogen): Step=3, Dir=6
-  - Servo: Pin 9
-  - Bluetooth: RX=10, TX=11
+  Optimiert für geringen Speicherverbrauch
 */
 
 #include <AccelStepper.h>
 #include <Servo.h>
 #include <SoftwareSerial.h>
 
-// Pin-Definitionen (deine bewährte Konfiguration)
+// Pin-Definitionen
 #define STEPPER_X_STEP 2
 #define STEPPER_X_DIR 5
 #define STEPPER_Y_STEP 3
 #define STEPPER_Y_DIR 6
 #define SERVO_PIN 9
 
-// SCARA-Arm Parameter (ANPASSEN für deinen Arm!)
-#define ARM1_LENGTH 100.0  // Länge des ersten Arms (mm)
-#define ARM2_LENGTH 100.0  // Länge des zweiten Arms (mm)
+// SCARA-Arm Parameter
+#define ARM1_LENGTH 200.0
+#define ARM2_LENGTH 200.0
+#define STEPS_PER_REVOLUTION_1 6400.0
+#define STEPS_PER_REVOLUTION_2 6400.0
 
-// Kalibrierung (aus deiner funktionierenden Firmware)
-const float steps_per_mm = 32.47; // Für lineare Bewegungen
-const float steps_per_degree = steps_per_mm * 3.14159 / 180.0; // Für Rotation (approximation)
+// Konstanten im Flash-Speicher
+const float steps_per_degree_1 PROGMEM = STEPS_PER_REVOLUTION_1 / 360.0;
+const float steps_per_degree_2 PROGMEM = STEPS_PER_REVOLUTION_2 / 360.0;
 
-// Servo-Positionen (aus deiner funktionierenden Firmware)
-const int servoUp = 90;    // Winkel für Stift hoch
-const int servoDown = 20;  // Winkel für Stift runter
-
-// Motor-Objekte (deine bewährte Konfiguration)
+// Motor-Objekte
 AccelStepper stepperX(AccelStepper::DRIVER, STEPPER_X_STEP, STEPPER_X_DIR);
 AccelStepper stepperY(AccelStepper::DRIVER, STEPPER_Y_STEP, STEPPER_Y_DIR);
 Servo zServo;
-SoftwareSerial btSerial(10, 11); // RX, TX
+SoftwareSerial btSerial(10, 11);
 
-// Variablen
-String input;
-float posX = 0, posY = 0, posZ = 1; // Z>0 = oben
-float currentAngle1 = 0, currentAngle2 = 0; // Aktuelle Winkel der Gelenke
+// Kompakte Variablen
+float currentAngle1 = 90.0;
+float currentAngle2 = 0.0;
+float posX = 0.0;
+float posY = ARM1_LENGTH + ARM2_LENGTH;
+float maxSpeed = 1000.0;
+float acceleration = 500.0;
+float feedrate = 800.0;
+float motorJerk = 0.8;
+
+// Flags als Bits
+byte systemFlags = 0;
+#define FLAG_HOMED 0
+#define FLAG_UNLOCKED 1
+#define FLAG_COORD_SYSTEM 2
+#define FLAG_POS_Z 3
+
+// Servo-Positionen
+byte customServoUp = 90;
+byte customServoDown = 20;
+
+// Kleiner String-Buffer
+char cmdBuffer[32];
 
 void setup() {
-  Serial.begin(9600);
-  btSerial.begin(9600);
+  Serial.begin(115200);
+  btSerial.begin(115200);
 
-  // Stepper-Konfiguration (deine bewährten Einstellungen)
-  stepperX.setMaxSpeed(1000);
-  stepperX.setAcceleration(500);
-  stepperY.setMaxSpeed(1000);
-  stepperY.setAcceleration(500);
+  stepperX.setMaxSpeed(maxSpeed);
+  stepperX.setAcceleration(acceleration);
+  stepperY.setMaxSpeed(maxSpeed);
+  stepperY.setAcceleration(acceleration);
 
-  // Servo-Konfiguration (deine bewährte Einstellung)
   zServo.attach(SERVO_PIN);
-  zServo.write(servoUp); // Stift hoch
+  zServo.write(90);
 
-  // GRBL-kompatible Startup-Nachricht
-  btSerial.println();
-  btSerial.println("Grbl 1.1h SCARA ['$' for help]");
-  btSerial.println("[MSG:'$H'|'$X' to unlock]");
+  // Flags setzen
+  bitSet(systemFlags, FLAG_COORD_SYSTEM); // Rectangular = true
+  bitSet(systemFlags, FLAG_POS_Z); // Z = hoch
 
-  Serial.println("SCARA DrawBot gestartet");
-  Serial.println("Arm1: " + String(ARM1_LENGTH) + "mm, Arm2: " + String(ARM2_LENGTH) + "mm");
+  btSerial.println(F("Grbl 1.1h SCARA"));
+  Serial.println(F("SCARA DrawBot gestartet"));
 }
 
 void loop() {
-  // Bluetooth-Eingabe verarbeiten
   if (btSerial.available()) {
-    input = btSerial.readStringUntil('\n');
-    input.trim();
-    processGCode(input);
+    byte len = btSerial.readBytesUntil('\n', cmdBuffer, 31);
+    cmdBuffer[len] = 0;
+    processCommand();
   }
 
-  // Stepper laufen lassen
+  if (Serial.available()) {
+    byte len = Serial.readBytesUntil('\n', cmdBuffer, 31);
+    cmdBuffer[len] = 0;
+    processCommand();
+  }
+
   stepperX.run();
   stepperY.run();
 }
 
-void processGCode(String code) {
-  code.trim();
-  code.toUpperCase();
-
-  Serial.println("Empfangen: " + code);
-
-  // GRBL System-Befehle
-  if (code == "$X") {
-    btSerial.println("ok");
-    Serial.println("Unlock");
-    return;
+void processCommand() {
+  // String zu Großbuchstaben
+  for (byte i = 0; cmdBuffer[i]; i++) {
+    if (cmdBuffer[i] >= 'a' && cmdBuffer[i] <= 'z') {
+      cmdBuffer[i] -= 32;
+    }
   }
 
-  if (code == "?") {
-    String status = "<Idle|MPos:" + String(posX, 3) + "," + String(posY, 3) + "," + String(posZ, 3);
-    status += "|Angles:" + String(currentAngle1, 2) + "," + String(currentAngle2, 2) + ">";
-    btSerial.println(status);
-    return;
-  }
-
-  // G-Code-Bewegungsbefehle
-  if (code.startsWith("G0") || code.startsWith("G1") || code.startsWith("G00") || code.startsWith("G01")) {
-    processMovement(code);
-    btSerial.println("ok");
-    return;
-  }
-
-  // G92 - Position setzen
-  if (code.startsWith("G92")) {
-    processG92(code);
-    btSerial.println("ok");
-    return;
-  }
-
-  // Für alle anderen Befehle: ok senden
-  btSerial.println("ok");
-}
-
-void processMovement(String code) {
-  float targetX = posX, targetY = posY, targetZ = posZ;
-
-  // Parameter extrahieren (deine bewährte Methode)
-  int xIndex = code.indexOf('X');
-  if (xIndex != -1) targetX = code.substring(xIndex + 1).toFloat();
-
-  int yIndex = code.indexOf('Y');
-  if (yIndex != -1) targetY = code.substring(yIndex + 1).toFloat();
-
-  int zIndex = code.indexOf('Z');
-  if (zIndex != -1) targetZ = code.substring(zIndex + 1).toFloat();
-
-  // Z-Achse zuerst bewegen (deine bewährte Reihenfolge)
-  if (targetZ != posZ) {
-    moveZ(targetZ);
-    posZ = targetZ;
-  }
-
-  // X/Y-Bewegung mit SCARA-Kinematik
-  if (targetX != posX || targetY != posY) {
-    moveSCARA(targetX, targetY);
-    posX = targetX;
-    posY = targetY;
+  switch (cmdBuffer[0]) {
+    case 'G':
+      processGCommand();
+      break;
+    case 'M':
+      processMCommand();
+      break;
+    case '$':
+      processSystemCommand();
+      break;
+    case 0:
+      btSerial.println(F("ok"));
+      break;
+    default:
+      btSerial.println(F("error:1"));
   }
 }
 
-void processG92(String code) {
-  // Position setzen (für Kalibrierung)
-  int xIndex = code.indexOf('X');
-  if (xIndex != -1) posX = code.substring(xIndex + 1).toFloat();
+void processGCommand() {
+  if (cmdBuffer[1] == '1' || cmdBuffer[1] == '0') {
+    // G0/G1 - Bewegung
+    float x = posX, y = posY, z = bitRead(systemFlags, FLAG_POS_Z);
+    float f = feedrate;
 
-  int yIndex = code.indexOf('Y');
-  if (yIndex != -1) posY = code.substring(yIndex + 1).toFloat();
+    parseParameters(x, y, z, f);
 
-  int zIndex = code.indexOf('Z');
-  if (zIndex != -1) posZ = code.substring(zIndex + 1).toFloat();
+    if (bitRead(systemFlags, FLAG_COORD_SYSTEM)) {
+      moveTo(x, y, z > 0);
+    } else {
+      moveToAngles(x, y, z > 0);
+    }
+    btSerial.println(F("ok"));
 
-  Serial.println("Position gesetzt: X=" + String(posX) + " Y=" + String(posY) + " Z=" + String(posZ));
-}
+  } else if (cmdBuffer[1] == '2' && cmdBuffer[2] == '8') {
+    // G28 - Home
+    homeAxes();
+    btSerial.println(F("ok"));
 
-void moveZ(float z) {
-  // Deine bewährte Z-Achsen-Steuerung
-  if (z > 0) {
-    zServo.write(servoUp);
-    delay(300); // Zeit für Servo
+  } else if (cmdBuffer[1] == '9' && cmdBuffer[2] == '4') {
+    // G94 - Rectangular
+    bitSet(systemFlags, FLAG_COORD_SYSTEM);
+    btSerial.println(F("ok"));
+
+  } else if (cmdBuffer[1] == '9' && cmdBuffer[2] == '5') {
+    // G95 - Angle
+    bitClear(systemFlags, FLAG_COORD_SYSTEM);
+    btSerial.println(F("ok"));
+
   } else {
-    zServo.write(servoDown);
-    delay(300);
+    btSerial.println(F("ok"));
   }
 }
 
-void moveSCARA(float targetX, float targetY) {
-  // Prüfe Erreichbarkeit
-  float distance = sqrt(targetX * targetX + targetY * targetY);
-  float maxReach = ARM1_LENGTH + ARM2_LENGTH;
-  float minReach = abs(ARM1_LENGTH - ARM2_LENGTH);
+void processMCommand() {
+  if (cmdBuffer[1] == '3') {
+    if (cmdBuffer[2] == 'S') {
+      // M3S - Servo-Winkel setzen
+      int angle = parseNumber(3);
+      if (angle >= 0) {
+        zServo.write(angle);
+        if (angle > customServoUp) bitSet(systemFlags, FLAG_POS_Z);
+        else bitClear(systemFlags, FLAG_POS_Z);
+      }
+    } else {
+      // M3 - Stift runter
+      zServo.write(customServoDown);
+      bitClear(systemFlags, FLAG_POS_Z);
+    }
+    btSerial.println(F("ok"));
 
-  if (distance > maxReach || distance < minReach) {
-    Serial.println("FEHLER: Ziel außerhalb der Reichweite!");
-    Serial.println("Distanz: " + String(distance) + "mm, Max: " + String(maxReach) + "mm, Min: " + String(minReach) + "mm");
-    return;
-  }
+  } else if (cmdBuffer[1] == '4') {
+    if (cmdBuffer[2] == ' ' && cmdBuffer[3] == 'L') {
+      // M4 L T - Servo-Winkel konfigurieren
+      int lVal = parseNumber(4);
+      if (lVal >= 0) customServoDown = lVal;
 
-  // Inverse Kinematik berechnen
-  float newAngle1, newAngle2;
-  if (inverseKinematics(targetX, targetY, &newAngle1, &newAngle2)) {
-    // Zu den neuen Winkeln bewegen
-    moveToAngles(newAngle1, newAngle2);
+      // Suche nach T
+      for (byte i = 4; cmdBuffer[i]; i++) {
+        if (cmdBuffer[i] == 'T') {
+          int tVal = parseNumber(i + 1);
+          if (tVal >= 0) customServoUp = tVal;
+          break;
+        }
+      }
+    } else {
+      // M4 - Stift runter
+      zServo.write(customServoDown);
+      bitClear(systemFlags, FLAG_POS_Z);
+    }
+    btSerial.println(F("ok"));
 
-    // Winkel aktualisieren
-    currentAngle1 = newAngle1;
-    currentAngle2 = newAngle2;
+  } else if (cmdBuffer[1] == '5') {
+    // M5 - Stift hoch
+    zServo.write(customServoUp);
+    bitSet(systemFlags, FLAG_POS_Z);
+    btSerial.println(F("ok"));
 
-    Serial.println("Bewegt zu X:" + String(targetX, 2) + " Y:" + String(targetY, 2));
-    Serial.println("Winkel: θ1=" + String(newAngle1, 2) + "° θ2=" + String(newAngle2, 2) + "°");
+  } else if (strncmp_P(cmdBuffer + 1, PSTR("369"), 3) == 0) {
+    // M369 - Position setzen
+    float x = posX, y = posY, dummy = 0;
+    parseParameters(x, y, dummy, dummy);
+
+    float angle1, angle2;
+    if (inverseKinematics(x, y, angle1, angle2)) {
+      currentAngle1 = angle1;
+      currentAngle2 = angle2;
+      posX = x;
+      posY = y;
+
+      long steps1 = (long)(angle1 * pgm_read_float(&steps_per_degree_1));
+      long steps2 = (long)(angle2 * pgm_read_float(&steps_per_degree_2));
+      stepperX.setCurrentPosition(steps1);
+      stepperY.setCurrentPosition(steps2);
+      btSerial.println(F("ok"));
+    } else {
+      btSerial.println(F("error:2"));
+    }
+
+  } else if (strncmp_P(cmdBuffer + 1, PSTR("370"), 3) == 0) {
+    // M370 - Position reset
+    posX = 0.0;
+    posY = ARM1_LENGTH + ARM2_LENGTH;
+    currentAngle1 = 90.0;
+    currentAngle2 = 0.0;
+
+    long steps1 = (long)(90.0 * pgm_read_float(&steps_per_degree_1));
+    long steps2 = 0;
+    stepperX.setCurrentPosition(steps1);
+    stepperY.setCurrentPosition(steps2);
+    btSerial.println(F("ok"));
+
+  } else if (strncmp_P(cmdBuffer + 1, PSTR("503"), 3) == 0) {
+    // M503 - Parameter anzeigen
+    btSerial.print(F("Speed:")); btSerial.println(maxSpeed);
+    btSerial.print(F("Accel:")); btSerial.println(acceleration);
+    btSerial.print(F("Feed:")); btSerial.println(feedrate);
+    btSerial.print(F("Pos X:")); btSerial.print(posX);
+    btSerial.print(F(" Y:")); btSerial.println(posY);
+    btSerial.println(F("ok"));
+
   } else {
-    Serial.println("FEHLER: Inverse Kinematik fehlgeschlagen!");
+    btSerial.println(F("ok"));
   }
 }
 
-bool inverseKinematics(float x, float y, float* angle1, float* angle2) {
-  float L1 = ARM1_LENGTH;
-  float L2 = ARM2_LENGTH;
-
-  // Distanz zum Ziel
-  float r = sqrt(x * x + y * y);
-
-  // Prüfe Erreichbarkeit
-  if (r > (L1 + L2) || r < abs(L1 - L2)) {
-    return false;
+void processSystemCommand() {
+  if (cmdBuffer[1] == 'H') {
+    homeAxes();
+    btSerial.println(F("ok"));
+  } else if (cmdBuffer[1] == 'X') {
+    bitSet(systemFlags, FLAG_UNLOCKED);
+    btSerial.println(F("ok"));
+  } else {
+    btSerial.println(F("ok"));
   }
-
-  // Cosinus-Regel für Winkel 2 (Ellbogen)
-  float cos_angle2 = (r * r - L1 * L1 - L2 * L2) / (2.0 * L1 * L2);
-
-  // Sicherstellen dass cos_angle2 im gültigen Bereich ist
-  if (cos_angle2 < -1.0 || cos_angle2 > 1.0) {
-    return false;
-  }
-
-  // Winkel 2 (Ellbogen) - wähle negative Lösung für "Ellbogen unten"
-  *angle2 = -acos(cos_angle2) * 180.0 / PI;
-
-  // Winkel 1 (Schulter)
-  float beta = atan2(y, x) * 180.0 / PI;
-  float alpha = atan2(L2 * sin(*angle2 * PI / 180.0),
-                      L1 + L2 * cos(*angle2 * PI / 180.0)) * 180.0 / PI;
-  *angle1 = beta - alpha;
-
-  return true;
 }
 
-void moveToAngles(float targetAngle1, float targetAngle2) {
-  // Berechne Winkeldifferenz
-  float deltaAngle1 = targetAngle1 - currentAngle1;
-  float deltaAngle2 = targetAngle2 - currentAngle2;
+void parseParameters(float &x, float &y, float &z, float &f) {
+  for (byte i = 0; cmdBuffer[i]; i++) {
+    switch (cmdBuffer[i]) {
+      case 'X':
+        x = parseFloat(i + 1);
+        break;
+      case 'Y':
+        y = parseFloat(i + 1);
+        break;
+      case 'Z':
+        z = parseFloat(i + 1);
+        break;
+      case 'F':
+        f = parseFloat(i + 1);
+        feedrate = f;
+        break;
+    }
+  }
+}
 
-  // Umrechnung in Steps (approximation)
-  long steps1 = deltaAngle1 * steps_per_degree;
-  long steps2 = deltaAngle2 * steps_per_degree;
+float parseFloat(byte startPos) {
+  byte i = startPos;
+  float result = 0;
+  float decimal = 0;
+  byte decimalPlaces = 0;
+  bool negative = false;
 
-  // Bewegung setzen
-  stepperX.move(steps1);
-  stepperY.move(steps2);
+  if (cmdBuffer[i] == '-') {
+    negative = true;
+    i++;
+  }
 
-  // Warten bis Bewegung abgeschlossen
+  while (cmdBuffer[i] >= '0' && cmdBuffer[i] <= '9') {
+    result = result * 10 + (cmdBuffer[i] - '0');
+    i++;
+  }
+
+  if (cmdBuffer[i] == '.') {
+    i++;
+    while (cmdBuffer[i] >= '0' && cmdBuffer[i] <= '9') {
+      decimal = decimal * 10 + (cmdBuffer[i] - '0');
+      decimalPlaces++;
+      i++;
+    }
+
+    for (byte j = 0; j < decimalPlaces; j++) {
+      decimal /= 10.0;
+    }
+    result += decimal;
+  }
+
+  return negative ? -result : result;
+}
+
+int parseNumber(byte startPos) {
+  int result = 0;
+  byte i = startPos;
+
+  while (cmdBuffer[i] >= '0' && cmdBuffer[i] <= '9') {
+    result = result * 10 + (cmdBuffer[i] - '0');
+    i++;
+  }
+
+  return result;
+}
+
+void homeAxes() {
+  currentAngle1 = 90.0;
+  currentAngle2 = 0.0;
+  posX = 0.0;
+  posY = ARM1_LENGTH + ARM2_LENGTH;
+  bitSet(systemFlags, FLAG_POS_Z);
+
+  long steps1 = (long)(90.0 * pgm_read_float(&steps_per_degree_1));
+  long steps2 = 0;
+
+  stepperX.moveTo(steps1);
+  stepperY.moveTo(steps2);
+
   while (stepperX.distanceToGo() != 0 || stepperY.distanceToGo() != 0) {
     stepperX.run();
     stepperY.run();
   }
+
+  zServo.write(customServoUp);
+  bitSet(systemFlags, FLAG_HOMED);
+}
+
+void moveTo(float x, float y, bool zUp) {
+  zServo.write(zUp ? customServoUp : customServoDown);
+  if (zUp) bitSet(systemFlags, FLAG_POS_Z);
+  else bitClear(systemFlags, FLAG_POS_Z);
+
+  float angle1, angle2;
+  if (inverseKinematics(x, y, angle1, angle2)) {
+    long steps1 = (long)(angle1 * pgm_read_float(&steps_per_degree_1));
+    long steps2 = (long)(angle2 * pgm_read_float(&steps_per_degree_2));
+
+    float speed = feedrate * 16.67;
+    stepperX.setMaxSpeed(speed);
+    stepperY.setMaxSpeed(speed);
+
+    stepperX.moveTo(steps1);
+    stepperY.moveTo(steps2);
+
+    posX = x;
+    posY = y;
+    currentAngle1 = angle1;
+    currentAngle2 = angle2;
+  } else {
+    btSerial.println(F("error:2"));
+  }
+}
+
+void moveToAngles(float angle1, float angle2, bool zUp) {
+  zServo.write(zUp ? customServoUp : customServoDown);
+  if (zUp) bitSet(systemFlags, FLAG_POS_Z);
+  else bitClear(systemFlags, FLAG_POS_Z);
+
+  if (angle1 < 0) angle1 += 360;
+  if (angle2 < 0) angle2 += 360;
+  if (angle1 > 360) angle1 = fmod(angle1, 360);
+  if (angle2 > 360) angle2 = fmod(angle2, 360);
+
+  long steps1 = (long)(angle1 * pgm_read_float(&steps_per_degree_1));
+  long steps2 = (long)(angle2 * pgm_read_float(&steps_per_degree_2));
+
+  float speed = feedrate * 16.67;
+  stepperX.setMaxSpeed(speed);
+  stepperY.setMaxSpeed(speed);
+
+  stepperX.moveTo(steps1);
+  stepperY.moveTo(steps2);
+
+  currentAngle1 = angle1;
+  currentAngle2 = angle2;
+
+  posX = ARM1_LENGTH * cos(radians(angle1)) + ARM2_LENGTH * cos(radians(angle1 + angle2));
+  posY = ARM1_LENGTH * sin(radians(angle1)) + ARM2_LENGTH * sin(radians(angle1 + angle2));
+}
+
+bool inverseKinematics(float x, float y, float &angle1, float &angle2) {
+  float distance = sqrt(x * x + y * y);
+
+  if (distance > (ARM1_LENGTH + ARM2_LENGTH) || distance < abs(ARM1_LENGTH - ARM2_LENGTH)) {
+    return false;
+  }
+
+  float cos_angle2 = (x * x + y * y - ARM1_LENGTH * ARM1_LENGTH - ARM2_LENGTH * ARM2_LENGTH) / (2 * ARM1_LENGTH * ARM2_LENGTH);
+
+  if (cos_angle2 < -1 || cos_angle2 > 1) {
+    return false;
+  }
+
+  angle2 = acos(cos_angle2);
+  angle2 = degrees(angle2);
+
+  float k1 = ARM1_LENGTH + ARM2_LENGTH * cos(radians(angle2));
+  float k2 = ARM2_LENGTH * sin(radians(angle2));
+
+  angle1 = atan2(y, x) - atan2(k2, k1);
+  angle1 = degrees(angle1);
+
+  if (angle1 < 0) angle1 += 360;
+  if (angle2 < 0) angle2 += 360;
+
+  return true;
 }

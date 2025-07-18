@@ -1,36 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="24dp"
-    android:gravity="center">
+    android:background="#F5F5F5">
 
+    <!-- Schlichter App Header ohne Emoji -->
     <TextView
-        android:id="@+id/welcome_text_view"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Welcome to DrawBot"
-        android:textSize="20sp"
+        android:text="DrawBot"
+        android:textSize="28sp"
         android:textStyle="bold"
-        android:layout_marginBottom="48dp"
-        android:gravity="center" />
+        android:textColor="#222"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="32dp" />
 
+    <!-- Willkommensnachricht -->
+    <TextView
+        android:id="@+id/welcome_text_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Welcome to DrawBot"
+        android:textSize="18sp"
+        android:textColor="#333"
+        android:gravity="center"
+        android:layout_marginBottom="24dp" />
+
+    <!-- Bluetooth Terminal Button -->
     <Button
         android:id="@+id/bluetooth_terminal_button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Bluetooth Terminal"
+        android:text="Bluetooth-Terminal"
         android:textSize="18sp"
-        android:layout_marginBottom="16dp"
-        android:padding="16dp" />
+        android:layout_marginBottom="24dp"
+        android:backgroundTint="#4CAF50"
+        android:textColor="#FFFFFF" />
 
+    <!-- Settings Button -->
     <Button
-        android:id="@+id/draw_button"
+        android:id="@+id/settings_button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Drawing Controls"
+        android:text="Einstellungen"
         android:textSize="18sp"
-        android:padding="16dp" />
+        android:backgroundTint="#2196F3"
+        android:textColor="#FFFFFF" />
+
+    <!-- Image to G-Code Button -->
+    <Button
+        android:id="@+id/image_to_gcode_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Image to G-Code konvertieren"
+        android:textSize="18sp"
+        android:backgroundTint="#FF9800"
+        android:textColor="#FFFFFF"
+        android:layout_marginTop="24dp" />
 
 </LinearLayout>

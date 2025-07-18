@@ -16,7 +16,6 @@ import com.google.firebase.auth.FirebaseUser;
 public class HomeActivity extends AppCompatActivity {
 
     private Button bluetoothTerminalButton;
-    private Button drawButton;
     private TextView welcomeTextView;
     private FirebaseAuth mAuth;
 
@@ -39,8 +38,9 @@ public class HomeActivity extends AppCompatActivity {
 
         // Initialize views
         bluetoothTerminalButton = findViewById(R.id.bluetooth_terminal_button);
-        drawButton = findViewById(R.id.draw_button);
         welcomeTextView = findViewById(R.id.welcome_text_view);
+        Button settingsButton = findViewById(R.id.settings_button);
+        Button imageToGcodeButton = findViewById(R.id.image_to_gcode_button);
 
         // Set welcome message
         String email = currentUser.getEmail();
@@ -50,13 +50,15 @@ public class HomeActivity extends AppCompatActivity {
             welcomeTextView.setText("Welcome to DrawBot");
         }
 
-        // Set up button listeners
+        // Set up button listener - only Bluetooth Terminal now
         bluetoothTerminalButton.setOnClickListener(v -> {
             startActivity(new Intent(HomeActivity.this, BluetoothTerminalActivity.class));
         });
-
-        drawButton.setOnClickListener(v -> {
-            startActivity(new Intent(HomeActivity.this, DrawActivity.class));
+        settingsButton.setOnClickListener(v -> {
+            startActivity(new Intent(HomeActivity.this, SettingsActivity.class));
+        });
+        imageToGcodeButton.setOnClickListener(v -> {
+            startActivity(new Intent(HomeActivity.this, ImageToGcodeActivity.class));
         });
     }
 

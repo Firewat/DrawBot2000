@@ -51,22 +51,29 @@
             android:exported="false"
             android:theme="@style/Theme.DrawBot" />
 
-        <!-- Draw Activity -->
-        <activity
-            android:name=".DrawActivity"
-            android:exported="false"
-            android:theme="@style/Theme.DrawBot" />
-
         <!-- Bluetooth Terminal Activity -->
         <activity
             android:name=".BluetoothTerminalActivity"
             android:exported="false"
             android:theme="@style/Theme.DrawBot" />
 
-        <!-- USB Permission Receiver -->
-        <receiver
-            android:name=".UsbPermissionReceiver"
-            android:exported="false" />
+        <!-- Settings Activity -->
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DrawBot" />
+
+        <!-- Bluetooth Connect Activity -->
+        <activity
+            android:name=".BluetoothConnectActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DrawBot" />
+
+        <!-- ImageToGcode Activity -->
+        <activity
+            android:name=".ImageToGcodeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DrawBot" />
 
     </application>
 

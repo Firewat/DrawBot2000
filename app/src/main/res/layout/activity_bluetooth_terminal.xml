@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
-    tools:context=".BluetoothTerminalActivity">
+    android:background="#F5F5F5">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -13,48 +11,29 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- Header -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="GRBL DrawBot Terminal"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:textAlignment="center"
-            android:background="#E3F2FD"
-            android:padding="12dp"
-            android:layout_marginBottom="16dp"/>
-
-        <!-- Geräte-Auswahl -->
+        <!-- Bluetooth Verbindung -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="GRBL-Gerät: "
-                android:textStyle="bold"
-                android:layout_gravity="center_vertical" />
+            android:layout_marginBottom="16dp">
 
             <Spinner
                 android:id="@+id/spinnerDevices"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="8dp" />
+                android:layout_marginEnd="8dp" />
 
             <Button
                 android:id="@+id/btnRefreshDevices"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="🔄"
-                android:layout_marginStart="8dp" />
+                android:text="Aktualisieren"
+                android:textSize="14sp"
+                android:backgroundTint="#FF9800" />
         </LinearLayout>
 
-        <!-- Verbindungs-Buttons -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -68,7 +47,8 @@
                 android:layout_weight="1"
                 android:text="Verbinden"
                 android:backgroundTint="#4CAF50"
-                android:layout_marginEnd="4dp" />
+                android:textColor="#FFFFFF"
+                android:layout_marginEnd="8dp" />
 
             <Button
                 android:id="@+id/btnDisconnect"
@@ -78,96 +58,101 @@
                 android:text="Trennen"
                 android:enabled="false"
                 android:backgroundTint="#F44336"
-                android:layout_marginStart="4dp" />
+                android:textColor="#FFFFFF" />
         </LinearLayout>
 
-        <!-- TERMINAL BEREICH - JETZT PROMINENT -->
-        <TextView
+        <!-- Terminal-Ausgabe -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="📟 GRBL Terminal (Antworten von Arduino)"
-            android:textStyle="bold"
-            android:textSize="16sp"
-            android:background="#FFF3E0"
-            android:padding="8dp"
-            android:layout_marginBottom="8dp"/>
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Terminal"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#333333"/>
+
+            <Button
+                android:id="@+id/btnClearTerminal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Clear"
+                android:textSize="12sp"
+                android:backgroundTint="#757575"
+                android:textColor="#FFFFFF" />
+        </LinearLayout>
 
         <ScrollView
             android:id="@+id/scrollViewTerminal"
             android:layout_width="match_parent"
             android:layout_height="200dp"
-            android:background="#263238"
-            android:padding="8dp"
-            android:layout_marginBottom="8dp">
+            android:background="#1E1E1E"
+            android:padding="12dp">
 
             <TextView
                 android:id="@+id/tvTerminal"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="[GRBL TERMINAL BEREIT]\nVerbinde mit einem Arduino mit GRBL...\n"
+                android:text="[G-CODE TERMINAL READY]\nVerbinde dich mit deinem DrawBot...\n"
                 android:textColor="#00FF00"
                 android:textSize="12sp"
                 android:fontFamily="monospace"
-                android:scrollbars="vertical"
                 android:textIsSelectable="true" />
         </ScrollView>
 
-        <!-- Visuelle Vorschau -->
-        <TextView
+        <!-- G-Code Datei hochladen und Eingabe -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="🎨 Zeichnungsvorschau"
-            android:textStyle="bold"
-            android:textSize="16sp"
-            android:background="#E8F5E8"
-            android:padding="8dp"
-            android:layout_marginBottom="8dp"/>
-
-        <ImageView
-            android:id="@+id/ivImagePreview"
-            android:layout_width="match_parent"
-            android:layout_height="300dp"
-            android:layout_marginBottom="8dp"
-            android:background="#F0F0F0"
-            android:scaleType="centerInside"
-            android:visibility="gone"
-            android:contentDescription="Zeichnungsvorschau" />
-
-        <!-- G-Code Eingabe Bereich -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="📝 G-Code Befehle"
-            android:textStyle="bold"
-            android:textSize="16sp"
-            android:background="#E8F5E8"
-            android:padding="8dp"
-            android:layout_marginBottom="8dp"/>
-
-        <!-- Multi-line G-Code Input -->
-        <ScrollView
-            android:layout_width="match_parent"
-            android:layout_height="150dp"
-            android:background="#F5F5F5"
-            android:padding="4dp"
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp"
             android:layout_marginBottom="8dp">
 
-            <EditText
-                android:id="@+id/etGCodeInput"
-                android:layout_width="match_parent"
+            <Button
+                android:id="@+id/btnUploadGCode"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:hint="G-Code Befehle eingeben (eine pro Zeile):\nG0 X10 Y10\nG1 X20 Y20 F500\nG0 X0 Y0"
-                android:inputType="textMultiLine"
-                android:gravity="top|start"
-                android:fontFamily="monospace"
-                android:background="@android:color/transparent"
-                android:padding="8dp"
-                android:enabled="false"
-                android:minLines="6"
-                android:scrollbars="vertical" />
-        </ScrollView>
+                android:layout_weight="1"
+                android:text="G-Code Datei hochladen"
+                android:textSize="14sp"
+                android:backgroundTint="#2196F3"
+                android:textColor="#FFFFFF"
+                android:layout_marginEnd="8dp" />
 
-        <!-- G-Code Control Buttons -->
+            <TextView
+                android:id="@+id/tvSelectedFile"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Keine Datei ausgewählt"
+                android:textSize="12sp"
+                android:textColor="#666666"
+                android:gravity="center_vertical"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <EditText
+            android:id="@+id/etGCodeInput"
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:hint="G-Code Befehle (eine pro Zeile)"
+            android:inputType="textMultiLine"
+            android:gravity="top|start"
+            android:fontFamily="monospace"
+            android:background="#F8F8F8"
+            android:padding="12dp"
+            android:enabled="false"
+            android:minLines="6"
+            android:scrollbars="vertical"
+            android:textSize="12sp"
+            android:layout_marginBottom="8dp" />
+
+        <!-- G-Code Steuerung -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -179,9 +164,10 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="G-Code senden"
+                android:text="Senden"
                 android:enabled="false"
                 android:backgroundTint="#4CAF50"
+                android:textColor="#FFFFFF"
                 android:layout_marginEnd="4dp" />
 
             <Button
@@ -192,6 +178,7 @@
                 android:text="Pause"
                 android:enabled="false"
                 android:backgroundTint="#FF9800"
+                android:textColor="#FFFFFF"
                 android:layout_marginStart="2dp"
                 android:layout_marginEnd="2dp" />
 
@@ -200,707 +187,70 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Stop"
+                android:text="Stopp"
                 android:enabled="false"
                 android:backgroundTint="#F44336"
+                android:textColor="#FFFFFF"
                 android:layout_marginStart="4dp" />
         </LinearLayout>
 
-        <!-- G-Code Progress Info -->
+        <!-- Terminal/Screen Reset Button -->
+        <Button
+            android:id="@+id/btnClearAll"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Terminal/Screen zurücksetzen"
+            android:backgroundTint="#757575"
+            android:textColor="#FFFFFF"
+            android:layout_marginTop="8dp" />
+
+        <!-- G-Code Status und Delay -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="8dp"
-            android:padding="8dp"
-            android:background="#E3F2FD">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Fortschritt: "
-                android:textStyle="bold" />
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp">
 
             <TextView
                 android:id="@+id/tvGCodeProgress"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="0/0 Befehle"
-                android:textColor="#1976D2" />
+                android:text="0/0 commands"
+                android:textSize="14sp"
+                android:textColor="#333333" />
 
             <TextView
                 android:id="@+id/tvGCodeDelay"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Verzögerung: 100ms"
-                android:textSize="12sp" />
-        </LinearLayout>
-
-        <!-- Delay Control -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="16dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Verzögerung zwischen Befehlen: "
-                android:layout_gravity="center_vertical" />
+                android:text="Delay: 100ms"
+                android:textSize="14sp"
+                android:textColor="#333333"
+                android:layout_marginStart="16dp" />
 
             <EditText
                 android:id="@+id/etGCodeDelay"
-                android:layout_width="80dp"
+                android:layout_width="60dp"
                 android:layout_height="wrap_content"
-                android:hint="100"
+                android:hint="ms"
                 android:inputType="number"
                 android:text="100"
-                android:textAlignment="center" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="ms"
-                android:layout_gravity="center_vertical"
-                android:layout_marginStart="4dp" />
-        </LinearLayout>
-
-        <!-- Befehls-Eingabe (einzelne Befehle) -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
-
-            <EditText
-                android:id="@+id/etCommand"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:hint="Einzelner G-Code Befehl (z.B. G0 X10)"
-                android:enabled="false"
-                android:fontFamily="monospace"
-                android:background="#F5F5F5"
-                android:padding="8dp" />
-
-            <Button
-                android:id="@+id/btnSend"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Senden"
-                android:enabled="false"
+                android:textSize="14sp"
+                android:gravity="center"
                 android:layout_marginStart="8dp" />
         </LinearLayout>
 
+        <!-- Home-Button -->
         <Button
-            android:id="@+id/btnClearTerminal"
+            android:id="@+id/btnHome"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Terminal löschen"
-            android:layout_marginBottom="16dp" />
-
-        <!-- Test-Funktionen -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="🎯 Test-Funktionen"
-            android:textStyle="bold"
-            android:textSize="16sp"
-            android:background="#E8F5E8"
-            android:padding="8dp"
-            android:layout_marginBottom="8dp"/>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="16dp">
-
-            <Button
-                android:id="@+id/btnTestCircle"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Test Kreis (3cm)"
-                android:enabled="false"
-                android:layout_marginEnd="4dp" />
-
-            <Button
-                android:id="@+id/btnHome"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Home (0,0)"
-                android:enabled="false"
-                android:layout_marginStart="4dp" />
-        </LinearLayout>
-
-        <!-- Bild zu G-Code -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="🖼️ Erweiterte Bild zu G-Code Konvertierung"
-            android:textStyle="bold"
-            android:textSize="16sp"
-            android:background="#F3E5F5"
-            android:padding="8dp"
-            android:layout_marginBottom="8dp"/>
-
-        <!-- Konvertierungsmodus -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Modus: "
-                android:textStyle="bold"
-                android:layout_gravity="center_vertical" />
-
-            <Spinner
-                android:id="@+id/spinnerConversionMode"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
-
-            <Button
-                android:id="@+id/btnSelectSvg"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="📄 SVG auswählen"
-                android:enabled="true"
-                android:layout_marginEnd="4dp" />
-
-            <Button
-                android:id="@+id/btnPreviewGCode"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Vorschau"
-                android:enabled="true"
-                android:layout_marginStart="4dp" />
-        </LinearLayout>
-
-        <!-- Erweiterte Einstellungen -->
-        <androidx.cardview.widget.CardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="2dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="12dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="⚙️ Konvertierungseinstellungen"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="8dp" />
-
-                <!-- Größe und Qualität -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="8dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Größe (mm): "
-                        android:textStyle="bold"
-                        android:layout_gravity="center_vertical" />
-
-                    <EditText
-                        android:id="@+id/etImageSize"
-                        android:layout_width="60dp"
-                        android:layout_height="wrap_content"
-                        android:hint="50"
-                        android:inputType="number"
-                        android:textSize="14sp"
-                        android:layout_marginEnd="16dp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Schwellwert: "
-                        android:textStyle="bold"
-                        android:layout_gravity="center_vertical" />
-
-                    <EditText
-                        android:id="@+id/etThreshold"
-                        android:layout_width="60dp"
-                        android:layout_height="wrap_content"
-                        android:hint="128"
-                        android:inputType="number"
-                        android:textSize="14sp" />
-                </LinearLayout>
-
-                <!-- Linienabstand und Geschwindigkeit -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="8dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Linienabstand: "
-                        android:textStyle="bold"
-                        android:layout_gravity="center_vertical" />
-
-                    <EditText
-                        android:id="@+id/etLineSpacing"
-                        android:layout_width="60dp"
-                        android:layout_height="wrap_content"
-                        android:hint="0.5"
-                        android:inputType="numberDecimal"
-                        android:textSize="14sp"
-                        android:layout_marginEnd="16dp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Geschw.: "
-                        android:textStyle="bold"
-                        android:layout_gravity="center_vertical" />
-
-                    <EditText
-                        android:id="@+id/etFeedRate"
-                        android:layout_width="60dp"
-                        android:layout_height="wrap_content"
-                        android:hint="800"
-                        android:inputType="number"
-                        android:textSize="14sp" />
-                </LinearLayout>
-
-                <!-- Checkboxes für Optionen -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <CheckBox
-                        android:id="@+id/cbOptimizePath"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Pfad optimieren"
-                        android:checked="true"
-                        android:textSize="12sp" />
-
-                    <CheckBox
-                        android:id="@+id/cbInvertImage"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Bild invertieren"
-                        android:textSize="12sp"
-                        android:layout_marginStart="16dp" />
-                </LinearLayout>
-
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <Button
-            android:id="@+id/btnDrawImage"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="🎨 Erweiterte Zeichnung starten"
-            android:enabled="false"
-            android:backgroundTint="#FF6F00"
+            android:text="Home-Position"
+            android:backgroundTint="#009688"
             android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp" />
-
-        <TextView
-            android:id="@+id/tvSelectedImage"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Kein Bild ausgewählt"
-            android:textStyle="italic"
-            android:layout_marginBottom="8dp"/>
-
-        <!-- G-Code Statistiken -->
-        <TextView
-            android:id="@+id/tvGCodeStats"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:textSize="12sp"
-            android:background="#E8F5E8"
-            android:padding="8dp"
-            android:visibility="gone"
-            android:layout_marginBottom="8dp"/>
-
-        <!-- Progress Anzeige -->
-        <ProgressBar
-            android:id="@+id/progressBarImage"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:visibility="gone"
-            android:layout_marginBottom="4dp"/>
-
-        <TextView
-            android:id="@+id/tvProgressText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:textAlignment="center"
-            android:visibility="gone"
-            android:layout_marginBottom="16dp"/>
-
-        <!-- Info-Bereich -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="ℹ️ Hinweise:\n• Lange drücken auf 'Test Kreis' für Verbindungstest\n• Terminal zeigt alle GRBL-Antworten\n• GRBL muss auf Arduino installiert sein"
-            android:textSize="12sp"
-            android:background="#F5F5F5"
-            android:padding="12dp"
-            android:layout_marginTop="8dp"/>
-
-        <!-- SCARA-Konfiguration -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="🤖 SCARA-Roboter Konfiguration"
-            android:textStyle="bold"
-            android:textSize="16sp"
-            android:background="#FFF3E0"
-            android:padding="8dp"
-            android:layout_marginBottom="8dp"/>
-
-        <CheckBox
-            android:id="@+id/cbScaraMode"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="SCARA-Modus aktivieren"
-            android:textStyle="bold"
-            android:checked="true"
-            android:layout_marginBottom="8dp" />
-
-        <!-- Arm-Längen -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Arm 1 (mm): "
-                android:textStyle="bold"
-                android:layout_gravity="center_vertical" />
-
-            <EditText
-                android:id="@+id/etArm1Length"
-                android:layout_width="80dp"
-                android:layout_height="wrap_content"
-                android:hint="100"
-                android:text="100"
-                android:inputType="numberDecimal"
-                android:textSize="14sp"
-                android:layout_marginEnd="16dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Arm 2 (mm): "
-                android:textStyle="bold"
-                android:layout_gravity="center_vertical" />
-
-            <EditText
-                android:id="@+id/etArm2Length"
-                android:layout_width="80dp"
-                android:layout_height="wrap_content"
-                android:hint="100"
-                android:text="100"
-                android:inputType="numberDecimal"
-                android:textSize="14sp" />
-        </LinearLayout>
-
-        <!-- Arbeitsbereich-Offset -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="16dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Offset X: "
-                android:textStyle="bold"
-                android:layout_gravity="center_vertical" />
-
-            <EditText
-                android:id="@+id/etOffsetX"
-                android:layout_width="80dp"
-                android:layout_height="wrap_content"
-                android:hint="0"
-                android:text="0"
-                android:inputType="numberSigned|numberDecimal"
-                android:textSize="14sp"
-                android:layout_marginEnd="16dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Offset Y: "
-                android:textStyle="bold"
-                android:layout_gravity="center_vertical" />
-
-            <EditText
-                android:id="@+id/etOffsetY"
-                android:layout_width="80dp"
-                android:layout_height="wrap_content"
-                android:hint="100"
-                android:text="100"
-                android:inputType="numberSigned|numberDecimal"
-                android:textSize="14sp" />
-        </LinearLayout>
-
-        <!-- Bestehende Bild-Einstellungen -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="🖼️ Bild-Einstellungen"
-            android:textStyle="bold"
-            android:textSize="16sp"
-            android:background="#E8F5E8"
-            android:padding="8dp"
-            android:layout_marginBottom="8dp"/>
-
-        <!-- Bildauswahl und G-Code Vorschau -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
-
-            <Button
-                android:id="@+id/btnSelectImage"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="🖼️ Bild auswählen"
-                android:enabled="true"
-                android:layout_marginEnd="4dp" />
-
-            <Button
-                android:id="@+id/btnPreviewGCodeImage"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="G-Code Vorschau"
-                android:enabled="true"
-                android:layout_marginStart="4dp" />
-        </LinearLayout>
-
-        <!-- Bild-zu-GCode Einstellungen -->
-        <androidx.cardview.widget.CardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="2dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="12dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="⚙️ Bild zu G-Code Einstellungen"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="8dp" />
-
-                <!-- Größe und Qualität -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="8dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Größe (mm): "
-                        android:textStyle="bold"
-                        android:layout_gravity="center_vertical" />
-
-                    <EditText
-                        android:id="@+id/etImageSize"
-                        android:layout_width="60dp"
-                        android:layout_height="wrap_content"
-                        android:hint="50"
-                        android:inputType="number"
-                        android:textSize="14sp"
-                        android:layout_marginEnd="16dp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Schwellwert: "
-                        android:textStyle="bold"
-                        android:layout_gravity="center_vertical" />
-
-                    <EditText
-                        android:id="@+id/etThreshold"
-                        android:layout_width="60dp"
-                        android:layout_height="wrap_content"
-                        android:hint="128"
-                        android:inputType="number"
-                        android:textSize="14sp" />
-                </LinearLayout>
-
-                <!-- Linienabstand und Geschwindigkeit -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="8dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Linienabstand: "
-                        android:textStyle="bold"
-                        android:layout_gravity="center_vertical" />
-
-                    <EditText
-                        android:id="@+id/etLineSpacing"
-                        android:layout_width="60dp"
-                        android:layout_height="wrap_content"
-                        android:hint="0.5"
-                        android:inputType="numberDecimal"
-                        android:textSize="14sp"
-                        android:layout_marginEnd="16dp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Geschw.: "
-                        android:textStyle="bold"
-                        android:layout_gravity="center_vertical" />
-
-                    <EditText
-                        android:id="@+id/etFeedRate"
-                        android:layout_width="60dp"
-                        android:layout_height="wrap_content"
-                        android:hint="800"
-                        android:inputType="number"
-                        android:textSize="14sp" />
-                </LinearLayout>
-
-                <!-- Checkboxes für Optionen -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <CheckBox
-                        android:id="@+id/cbOptimizePath"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Pfad optimieren"
-                        android:checked="true"
-                        android:textSize="12sp" />
-
-                    <CheckBox
-                        android:id="@+id/cbInvertImage"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Bild invertieren"
-                        android:textSize="12sp"
-                        android:layout_marginStart="16dp" />
-                </LinearLayout>
-
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <Button
-            android:id="@+id/btnDrawImage"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="🎨 Erweiterte Zeichnung starten"
-            android:enabled="false"
-            android:backgroundTint="#FF6F00"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp" />
-
-        <TextView
-            android:id="@+id/tvSelectedImage"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Kein Bild ausgewählt"
-            android:textStyle="italic"
-            android:layout_marginBottom="8dp"/>
-
-        <!-- G-Code Statistiken -->
-        <TextView
-            android:id="@+id/tvGCodeStats"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:textSize="12sp"
-            android:background="#E8F5E8"
-            android:padding="8dp"
-            android:visibility="gone"
-            android:layout_marginBottom="8dp"/>
-
-        <!-- Progress Anzeige -->
-        <ProgressBar
-            android:id="@+id/progressBarImage"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:visibility="gone"
-            android:layout_marginBottom="4dp"/>
-
-        <TextView
-            android:id="@+id/tvProgressText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:textAlignment="center"
-            android:visibility="gone"
-            android:layout_marginBottom="16dp"/>
-
-        <!-- Info-Bereich -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="ℹ️ Hinweise:\n• Lange drücken auf 'Test Kreis' für Verbindungstest\n• Terminal zeigt alle GRBL-Antworten\n• GRBL muss auf Arduino installiert sein"
-            android:textSize="12sp"
-            android:background="#F5F5F5"
-            android:padding="12dp"
-            android:layout_marginTop="8dp"/>
+            android:layout_marginTop="8dp" />
 
     </LinearLayout>
 </ScrollView>

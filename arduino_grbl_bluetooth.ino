@@ -50,7 +50,7 @@ void setup() {
   Serial.begin(115200);
 
   // Bluetooth Serial
-  bluetooth.begin(9600); // Standard HC-05/HC-06 Baudrate
+  bluetooth.begin(115200); // Standard HC-05/HC-06 Baudrate
 
   // Motor Pins konfigurieren
   pinMode(X_STEP_PIN, OUTPUT);
@@ -307,4 +307,3 @@ void movePen(float targetZ) {
   currentZ = targetZ;
   delay(500); // Zeit für Servo-Bewegung
 }
-

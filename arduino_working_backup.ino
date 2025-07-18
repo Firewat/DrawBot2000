@@ -1,66 +1,76 @@
 #include <AccelStepper.h>
-#include <Servo.h>
 #include <SoftwareSerial.h>
 
 #define STEPPER_X_STEP 2
 #define STEPPER_X_DIR 5
 #define STEPPER_Y_STEP 3
 #define STEPPER_Y_DIR 6
-#define SERVO_PIN 9
 
 // SCARA-Arm Parameter (ANPASSEN für deinen Arm!)
-const float ARM1_LENGTH = 100.0; // Länge des ersten Arms (mm)
-const float ARM2_LENGTH = 100.0; // Länge des zweiten Arms (mm)
+const float ARM1_LENGTH = 155.0; // Länge des ersten Arms (mm)
+const float ARM2_LENGTH = 155.0; // Länge des zweiten Arms (mm)
 
 // Kalibrierung für SCARA-Motoren
 const float steps_per_degree = 8.888; // Steps pro Grad (200*16/360 = 8.888)
 const int servoUp = 90;    // Winkel für Stift hoch
 const int servoDown = 20;  // Winkel für Stift runter
 
-AccelStepper stepperX(AccelStepper::DRIVER, STEPPER_X_STEP, STEPPER_X_DIR); // Schulter
-AccelStepper stepperY(AccelStepper::DRIVER, STEPPER_Y_STEP, STEPPER_Y_DIR); // Ellbogen
-Servo zServo;
-SoftwareSerial btSerial(10, 11); // RX, TX
+// X-Achse: 28BYJ-48 Stepper Motor (HALF4WIRE, Pins 5, 4, 3, 2) // IN1=5, IN2=4, IN3=3, IN4=2
+AccelStepper stepperX(AccelStepper::HALF4WIRE, 5, 4, 3, 2);
+// Y-Achse: 28BYJ-48 Stepper Motor (HALF4WIRE, Pins A3, A2, A1, A0) // IN1=A3, IN2=A2, IN3=A1, IN4=A0
+AccelStepper stepperY(AccelStepper::HALF4WIRE, A3, A2, A1, A0);
+// Z-Achse: 28BYJ-48 Stepper Motor (HALF4WIRE, Pins 13, 12, 9, 8) // IN1=13, IN2=12, IN3=9, IN4=8
+AccelStepper stepperZ(AccelStepper::HALF4WIRE, 13, 12, 9, 8);
+// Servo entfällt, da Z jetzt Stepper ist
 
 String input;
-float posX = 0, posY = 0, posZ = 1; // Z>0 = oben
+float posX = 0, posY = 0, posZ = 0; // Z=0 unten, Z=1 oben
 float currentAngle1 = 0, currentAngle2 = 0; // Aktuelle Winkel der Gelenke
 
+SoftwareSerial btSerial(10, 11); // RX, TX für Bluetooth-Modul
+
+String gcodeBuffer = "";
+
 void setup() {
-  Serial.begin(9600);
-  btSerial.begin(9600);
+  Serial.begin(115200);
+  btSerial.begin(115200);
 
-  stepperX.setMaxSpeed(1000);
-  stepperX.setAcceleration(500);
-  stepperY.setMaxSpeed(1000);
-  stepperY.setAcceleration(500);
-
-  zServo.attach(SERVO_PIN);
-  zServo.write(servoUp); // Stift hoch
-
-  // GRBL-kompatible Startup-Nachricht hinzufügen
-  btSerial.println();
-  btSerial.println("Grbl 1.1h SCARA ['$' for help]");
+  stepperX.setMaxSpeed(200);
+  stepperX.setAcceleration(50);
+  stepperY.setMaxSpeed(200);
+  stepperY.setAcceleration(50);
+  stepperZ.setMaxSpeed(200);
+  stepperZ.setAcceleration(50);
 
   Serial.println("SCARA DrawBot bereit");
-  Serial.println("Arm1: " + String(ARM1_LENGTH) + "mm, Arm2: " + String(ARM2_LENGTH) + "mm");
+  btSerial.println("Bluetooth bereit");
 }
 
 void loop() {
-  if (btSerial.available()) {
-    input = btSerial.readStringUntil('\n');
-    input.trim();
-    processGCode(input);
+  while (btSerial.available()) {
+    char c = btSerial.read();
+    Serial.write(c); // Debug: zeige empfangene Zeichen im Serial Monitor
+    if (c == '\n' || c == '\r') {
+      gcodeBuffer.trim();
+      if (gcodeBuffer.length() > 0) {
+        Serial.println("GCode empfangen: " + gcodeBuffer);
+        processGCode(gcodeBuffer);
+        gcodeBuffer = "";
+      }
+    } else {
+      gcodeBuffer += c;
+    }
   }
   stepperX.run();
   stepperY.run();
+  stepperZ.run();
 }
 
 void processGCode(String code) {
   code.trim();
   code.toUpperCase();
 
-  Serial.println("SCARA: " + code);
+  Serial.println("GCode empfangen: " + code);
 
   // GRBL System-Befehle
   if (code == "$X") {
@@ -70,8 +80,7 @@ void processGCode(String code) {
   }
 
   if (code == "?") {
-    String status = "<Idle|MPos:" + String(posX, 3) + "," + String(posY, 3) + "," + String(posZ, 3);
-    status += "|Angles:" + String(currentAngle1, 2) + "," + String(currentAngle2, 2) + ">";
+    String status = "<Idle|MPos:" + String(posX, 3) + "," + String(posY, 3) + "," + String(posZ, 3) + ">";
     btSerial.println(status);
     return;
   }
@@ -86,22 +95,15 @@ void processGCode(String code) {
   if (zIndex != -1) z = parseFloat(code, zIndex + 1);
 
   if (code.startsWith("G0") || code.startsWith("G1") || code.startsWith("G00") || code.startsWith("G01")) {
-    // Z zuerst bewegen (Stift hoch/runter)
+    // Z zuerst bewegen
     if (z != posZ) {
       moveZ(z);
       posZ = z;
     }
-
-    // X/Y-Bewegung mit SCARA-Kinematik
-    if (x != posX || y != posY) {
-      if (moveSCARA(x, y)) {
-        posX = x;
-        posY = y;
-      } else {
-        Serial.println("FEHLER: Ziel außerhalb der SCARA-Reichweite!");
-      }
-    }
-
+    // X/Y bewegen
+    moveXY(x, y);
+    posX = x;
+    posY = y;
     btSerial.println("ok");
   } else if (code.startsWith("G92")) {
     // Position setzen
@@ -110,87 +112,16 @@ void processGCode(String code) {
     if (zIndex != -1) posZ = z;
     btSerial.println("ok");
   } else {
-    // Für alle anderen Befehle: ok senden
     btSerial.println("ok");
   }
 }
 
-bool moveSCARA(float targetX, float targetY) {
-  // Prüfe Erreichbarkeit
-  float distance = sqrt(targetX * targetX + targetY * targetY);
-  float maxReach = ARM1_LENGTH + ARM2_LENGTH;
-  float minReach = abs(ARM1_LENGTH - ARM2_LENGTH);
-
-  if (distance > maxReach || distance < minReach) {
-    Serial.println("Außerhalb der Reichweite: " + String(distance) + "mm (Max: " + String(maxReach) + "mm)");
-    return false;
-  }
-
-  // Inverse Kinematik berechnen
-  float newAngle1, newAngle2;
-  if (inverseKinematics(targetX, targetY, &newAngle1, &newAngle2)) {
-    // Zu den neuen Winkeln bewegen
-    moveToAngles(newAngle1, newAngle2);
-
-    // Winkel aktualisieren
-    currentAngle1 = newAngle1;
-    currentAngle2 = newAngle2;
-
-    Serial.println("Bewegt zu X:" + String(targetX, 2) + " Y:" + String(targetY, 2));
-    Serial.println("Winkel: θ1=" + String(newAngle1, 2) + "° θ2=" + String(newAngle2, 2) + "°");
-    return true;
-  } else {
-    Serial.println("Inverse Kinematik fehlgeschlagen!");
-    return false;
-  }
-}
-
-bool inverseKinematics(float x, float y, float* angle1, float* angle2) {
-  float L1 = ARM1_LENGTH;
-  float L2 = ARM2_LENGTH;
-
-  // Distanz zum Ziel
-  float r = sqrt(x * x + y * y);
-
-  // Prüfe Erreichbarkeit
-  if (r > (L1 + L2) || r < abs(L1 - L2)) {
-    return false;
-  }
-
-  // Cosinus-Regel für Winkel 2 (Ellbogen)
-  float cos_angle2 = (r * r - L1 * L1 - L2 * L2) / (2.0 * L1 * L2);
-
-  // Sicherstellen dass cos_angle2 im gültigen Bereich ist
-  if (cos_angle2 < -1.0 || cos_angle2 > 1.0) {
-    return false;
-  }
-
-  // Winkel 2 (Ellbogen) - wähle negative Lösung für "Ellbogen unten"
-  *angle2 = -acos(cos_angle2) * 180.0 / PI;
-
-  // Winkel 1 (Schulter)
-  float beta = atan2(y, x) * 180.0 / PI;
-  float alpha = atan2(L2 * sin(*angle2 * PI / 180.0),
-                      L1 + L2 * cos(*angle2 * PI / 180.0)) * 180.0 / PI;
-  *angle1 = beta - alpha;
-
-  return true;
-}
-
-void moveToAngles(float targetAngle1, float targetAngle2) {
-  // Berechne Winkeldifferenz
-  float deltaAngle1 = targetAngle1 - currentAngle1;
-  float deltaAngle2 = targetAngle2 - currentAngle2;
-
-  // Umrechnung in Steps
-  long steps1 = deltaAngle1 * steps_per_degree;
-  long steps2 = deltaAngle2 * steps_per_degree;
-
-  // Bewegung setzen
-  stepperX.move(steps1);
-  stepperY.move(steps2);
-
-  // Warten bis Bewegung abgeschlossen
+void moveXY(float x, float y) {
+  // Umrechnung: 1mm = 64 Steps (Beispielwert, ggf. anpassen)
+  long stepsX = x * 64;
+  long stepsY = y * 64;
+  stepperX.moveTo(stepsX);
+  stepperY.moveTo(stepsY);
   while (stepperX.distanceToGo() != 0 || stepperY.distanceToGo() != 0) {
     stepperX.run();
     stepperY.run();
@@ -198,12 +129,14 @@ void moveToAngles(float targetAngle1, float targetAngle2) {
 }
 
 void moveZ(float z) {
+  // Z=0 unten, Z=1 oben (Beispielwerte, ggf. anpassen)
   if (z > 0) {
-    zServo.write(servoUp);
-    delay(300); // Zeit für Servo
+    stepperZ.moveTo(100);
   } else {
-    zServo.write(servoDown);
-    delay(300);
+    stepperZ.moveTo(0);
+  }
+  while (stepperZ.distanceToGo() != 0) {
+    stepperZ.run();
   }
 }
 
@@ -218,4 +151,36 @@ float parseFloat(String command, int startIndex) {
     }
   }
   return valueStr.toFloat();
+}
+
+void readData()
+{
+  while ( Serial.available() )         // Read while there are available characters
+  {
+    delay(3);
+    char c = Serial.read();
+    if (c != '\n' && c != '\r') {
+      myString += c;                     // build the command string ohne Zeilenende
+    }
+  }
+  Serial.print(myString);              // Output the full command string - for debugging
+}
+
+void checkData()
+{
+  myString.trim(); // Zeilenenden und Leerzeichen entfernen
+  if (( myString.length() == 4) && (myString.startsWith("com") ))
+  {
+    validCommand = true;
+    command = myString[3];             // Get the command character
+    Serial.print(" command is   ");
+    Serial.println(command);
+  }
+  else  // input data string must contain at least 1 character, or we get stuck in a loop
+  if ( myString.length() > 0)
+  {
+    validCommand = false;
+    Serial.println("   command string is invalid");
+  }
+  myString = "";                        // Clear the input data string for next time
 }

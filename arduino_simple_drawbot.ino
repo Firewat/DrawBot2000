@@ -24,8 +24,8 @@ float currentZ = 0; // Aktuelle Z-Position für Stift
 bool isUnlocked = false; // Für $X Unlock-Befehl
 
 void setup() {
-  Serial.begin(9600);
-  btSerial.begin(9600);
+  Serial.begin(115200);
+  btSerial.begin(115200);
 
   // Stepper konfigurieren
   stepperX.setMaxSpeed(1000);
