@@ -59,11 +59,13 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
     // G-code sending control
     private List<String> gCodeQueue = new ArrayList<>();
     private int currentGCodeIndex = 0;
+    private int bufferedCommands = 0;
+    private static final int MAX_BUFFERED_COMMANDS = 200;
     private boolean isGCodeRunning = false;
     private boolean isGCodePaused = false;
     private Handler gCodeHandler = new Handler(Looper.getMainLooper());
     private Runnable gCodeRunnable;
-    private int gCodeDelay = 100; // Default delay in milliseconds
+    private int gCodeDelay = 50; // Default delay in milliseconds
 
     private Spinner spinnerDevices;
     private ArrayList<BluetoothDevice> deviceList = new ArrayList<>();
@@ -72,9 +74,20 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
 
     // Für G-Code Bestätigungs-Handling
     private boolean waitingForOk = false;
+    private long lastCommandTime = 0;
+    private int commandsSent = 0;
+    private int commandsProcessed = 0;
+    private static final int COMMAND_TIMEOUT_MS = 10000; // 10 seconds
+    private static final int INTER_COMMAND_DELAY_MS = 20; // 20ms between commands
+
+
 
     // Home button
     private Button btnHome;
+
+
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -161,7 +174,7 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
                 String lower = cleanMsg.toLowerCase();
                 if (lower.equals("ok") || lower.equals("ook") || lower.equals("k")) {
                     waitingForOk = false;
-                    runOnUiThread(this::sendNextGCodeCommand);
+                    if (bufferedCommands > 0) bufferedCommands--;
                 }
             }
         });
@@ -397,26 +410,22 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
         currentGCodeIndex = 0;
         isGCodeRunning = true;
         isGCodePaused = false;
-
         updateGCodeProgress();
         updateGCodeButtons();
-
-        sendNextGCodeCommand();
+        sendNextGCodeCommandWithDelay();
     }
 
-    private void sendNextGCodeCommand() {
+    private void sendNextGCodeCommandWithDelay() {
         if (!isGCodeRunning || isGCodePaused || currentGCodeIndex >= gCodeQueue.size()) {
-            waitingForOk = false;
             return;
         }
-        if (waitingForOk) return; // Warte auf Bestätigung
         String command = gCodeQueue.get(currentGCodeIndex);
         sendGrblCommand(command);
-        waitingForOk = true;
         currentGCodeIndex++;
         updateGCodeProgress();
-        // Kein Timer mehr, nächster Befehl erst nach "ok"
-        if (currentGCodeIndex >= gCodeQueue.size()) {
+        if (currentGCodeIndex < gCodeQueue.size()) {
+            gCodeHandler.postDelayed(this::sendNextGCodeCommandWithDelay, gCodeDelay);
+        } else {
             isGCodeRunning = false;
             updateGCodeButtons();
             Toast.makeText(this, "All G-code commands sent", Toast.LENGTH_SHORT).show();
@@ -431,7 +440,7 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
             btnPauseGCode.setText("▶ Resume");
         } else {
             btnPauseGCode.setText("⏸ Pause");
-            sendNextGCodeCommand();
+            sendNextGCodeCommandWithDelay();
         }
     }
 

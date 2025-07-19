@@ -11,11 +11,28 @@
 #include <AccelStepper.h>
 #include <SoftwareSerial.h>
 
-SoftwareSerial btSerial(10, 11); // RX, TX
+#define HALFSTEP 8
 
-// Stepper Setup (Driver Mode: 1 = DRIVER)
-AccelStepper stepperX(AccelStepper::DRIVER, 2, 5); // STEP, DIR
-AccelStepper stepperY(AccelStepper::DRIVER, 3, 6); // STEP, DIR
+// Motor pin definitions
+#define X_motorPin1  5
+#define X_motorPin2  4
+#define X_motorPin3  3
+#define X_motorPin4  2
+#define Y_motorPin1  A3
+#define Y_motorPin2  A2
+#define Y_motorPin3  A1
+#define Y_motorPin4  A0
+#define Z_motorPin1  13
+#define Z_motorPin2  12
+#define Z_motorPin3  9
+#define Z_motorPin4  8
+
+SoftwareSerial btSerial(10, 11);
+
+// Stepper Setup für 28BYJ-48 mit ULN2003 (HALFSTEP)
+AccelStepper stepperX(HALFSTEP, X_motorPin1, X_motorPin3, X_motorPin2, X_motorPin4);
+AccelStepper stepperY(HALFSTEP, Y_motorPin1, Y_motorPin3, Y_motorPin2, Y_motorPin4);
+AccelStepper stepperZ(HALFSTEP, Z_motorPin1, Z_motorPin3, Z_motorPin2, Z_motorPin4);
 
 String input;
 float posX = 0;
@@ -130,6 +147,14 @@ void processGCode(String code) {
   bool hasMovement = false;
   bool isRapidMove = code.startsWith("G0"); // G0 = schnell, G1 = langsam
 
+  // --- Änderung: Bei jedem G0 Stift hoch, bei jedem G1 Stift runter ---
+  if (isRapidMove) {
+    movePen(1); // Stift hoch (Z1)
+  } else if (code.startsWith("G1")) {
+    movePen(-1); // Stift runter (Z0)
+  }
+  // --- Ende Änderung ---
+
   // X-Parameter extrahieren
   int xIndex = code.indexOf('X');
   if (xIndex != -1) {
@@ -146,7 +171,7 @@ void processGCode(String code) {
     hasMovement = true;
   }
 
-  // Z-Parameter extrahieren (für Stift hoch/runter)
+  // Z-Parameter extrahieren (für manuelle Z-Steuerung, falls gewünscht)
   int zIndex = code.indexOf('Z');
   if (zIndex != -1) {
     int zEnd = findNextSpace(code, zIndex);
@@ -196,22 +221,57 @@ void processGCode(String code) {
   }
 }
 
+// --- Änderung: Pen (Z) wird bei G0/G1 automatisch gehoben/gesenkt ---
+// Siehe processGCode und movePen für Details
+
 void movePen(float targetZ) {
   Serial.println("Bewege Stift zu Z:" + String(targetZ));
 
   // Z < 0 = Stift unten (zeichnen)
   // Z >= 0 = Stift oben (bewegen)
 
+  long targetSteps;
   if (targetZ < 0) {
-    penServo.write(45); // Stift runter (anpassen je nach Servo)
-    Serial.println("Stift RUNTER - zeichnet");
+    // Stift runter (z.B. 0 mm = unten)
+    targetSteps = 0; // Passe ggf. an, falls "unten" eine andere Position ist
+    Serial.println("Stift RUNTER - zeichnet (Stepper)");
   } else {
-    penServo.write(90); // Stift hoch (anpassen je nach Servo)
-    Serial.println("Stift HOCH - bewegt");
+    // Stift hoch (z.B. 10 mm = oben)
+    targetSteps = 10 * 40; // 10 mm nach oben, 40 Steps/mm (anpassen falls nötig)
+    Serial.println("Stift HOCH - bewegt (Stepper)");
+  }
+
+  stepperZ.setMaxSpeed(400); // Geschwindigkeit für Z
+  stepperZ.setAcceleration(200);
+  stepperZ.moveTo(targetSteps);
+  while (stepperZ.distanceToGo() != 0) {
+    stepperZ.run();
   }
 
   currentZ = targetZ;
-  delay(300); // Mehr Zeit für Servo-Bewegung
+  delay(200); // Kurze Pause für Mechanik
+}
+
+// --- Erweiterung: Nach G-Code-Ende Stift hoch und Home-Fahrt ---
+void finishDrawing() {
+  // Stift hoch
+  movePen(1); // Z1 = Stift hoch
+  delay(300); // Warten bis Stift oben ist
+  // Home-Position anfahren (X=0, Y=0)
+  Serial.println("Fahre zur Home-Position (0,0)");
+  long targetX = 0;
+  long targetY = 0;
+  stepperX.setMaxSpeed(1500);
+  stepperY.setMaxSpeed(1500);
+  stepperX.moveTo(targetX);
+  stepperY.moveTo(targetY);
+  while (stepperX.distanceToGo() != 0 || stepperY.distanceToGo() != 0) {
+    stepperX.run();
+    stepperY.run();
+  }
+  posX = 0;
+  posY = 0;
+  Serial.println("Home-Position erreicht, Stift oben.");
 }
 
 // Hilfsfunktion um das Ende eines Parameters zu finden
@@ -224,3 +284,5 @@ int findNextSpace(String str, int startIndex) {
   }
   return str.length();
 }
+
+// Am Ende des G-Codes (z.B. nach letzter Bewegung) finishDrawing() aufrufen!
