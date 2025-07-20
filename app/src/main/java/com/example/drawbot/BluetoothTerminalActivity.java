@@ -44,16 +44,7 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
 
 
     // GRBL constants
-
-    private static final int GRBL_BUFFER_SIZE = 128;          // Grbl's RX buffer size
-    private static final int GRBL_PLANNER_BLOCKS = 16;        // Grbl's planner buffer
-    private static final int SETUP_COMMAND_DELAY_MS = 100;    // G21, G90, G92 commands
-    private static final int MOVEMENT_COMMAND_DELAY_MS = 50;   // G0, G1 commands
-    private static final int MOTOR_COMMAND_DELAY_MS = 200;     // M17, M18 commands
-    private static final int HOME_COMMAND_DELAY_MS = 500;      // G28 homing
-    /////////
-    ///
-    private static final float PEN_UP_Z = 5.0f;     // Z coordinate for pen up
+    private static final float PEN_UP_Z = 1.0f;     // Z coordinate for pen up
     private static final float PEN_DOWN_Z = 0.0f;
 
 
@@ -366,8 +357,8 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
         updateTerminalDisplay();
 
 
-       // sendGrblCommand("M17"); // Enable motors
-        gCodeHandler.postDelayed(() -> sendGrblCommand("G28"), 500); // Use G28 home command
+        // sendGrblCommand("M17"); // Enable motors
+        gCodeHandler.postDelayed(() -> sendGrblCommand("G1 X0 Y0 Z0"), 500);
 
         Toast.makeText(this, "Homing to (0,0)...", Toast.LENGTH_SHORT).show();
     }
@@ -522,19 +513,13 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
 
         // Check if we've sent all commands
         if (currentGCodeIndex >= gCodeQueue.size()) {
-            // Send M400 to wait for completion, then M18 to disable motors
+
             if (currentGCodeIndex == gCodeQueue.size()) {
                 sendGrblCommand("M400"); // Wait for all moves to complete
                 currentGCodeIndex++; // Increment to prevent re-sending M400
                 gCodeHandler.postDelayed(this::sendNextGCodeCommandWithDelay, 100);
                 return;
-            } else if (currentGCodeIndex == gCodeQueue.size() + 1) {
-                sendGrblCommand("M18"); // Disable motors
-                currentGCodeIndex++; // Increment to prevent re-sending M18
-                gCodeHandler.postDelayed(this::sendNextGCodeCommandWithDelay, 100);
-                return;
             } else {
-                // All commands including M400 and M18 have been sent
                 finishGCodeExecution();
                 return;
             }
@@ -579,12 +564,7 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
     private void stopGCodeCommands() {
         isGCodeRunning = false;
         waitingForOk = false;
-        gCodeHandler.removeCallbacksAndMessages(null); // Remove all pending callbacks
-
-        // Send emergency stop
-        if (bluetoothHelper.isConnected()) {
-            sendGrblCommand("M18"); // Disable motors
-        }
+        gCodeHandler.removeCallbacksAndMessages(null); // Remove all callback
 
         updateGCodeButtons();
         terminalOutput.append("[G-CODE EXECUTION STOPPED]\n");
@@ -593,7 +573,7 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
     }
 
     private void updateGCodeProgress() {
-        int totalCommands = gCodeQueue.size() + 2; // +2 for M400 and M18
+        int totalCommands = gCodeQueue.size() + 2; // +2 for M400 and potentially M18
         String progress = commandsProcessed + "/" + totalCommands + " commands processed";
         if (tvGCodeProgress != null) {
             tvGCodeProgress.setText(progress);
