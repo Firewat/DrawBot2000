@@ -16,7 +16,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
-import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -29,6 +28,7 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -37,44 +37,53 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
     private static final int REQUEST_BLUETOOTH_PERMISSIONS = 100;
     private static final int REQUEST_ENABLE_BT = 101;
     private static final int REQUEST_SELECT_GCODE_FILE = 102;
-
+    private static final int COMMAND_TIMEOUT_MS = 45000;
+    private static final int INTER_COMMAND_DELAY_MS = 50;
+    private static final int DEFAULT_GCODE_DELAY_MS = 1000; // Default delay for G-code commands
     private BluetoothHelper bluetoothHelper;
-    private TextView tvTerminal;
-    private Button btnConnect;
-    private Button btnDisconnect;
-    private Button btnClearTerminal;
-    private Button btnRefreshDevices;
-    private Button btnUploadGCode;
-    private TextView tvSelectedFile;
 
-    // Multi-line G-code variables
+
+    // GRBL constants
+
+    private static final int GRBL_BUFFER_SIZE = 128;          // Grbl's RX buffer size
+    private static final int GRBL_PLANNER_BLOCKS = 16;        // Grbl's planner buffer
+    private static final int SETUP_COMMAND_DELAY_MS = 100;    // G21, G90, G92 commands
+    private static final int MOVEMENT_COMMAND_DELAY_MS = 50;   // G0, G1 commands
+    private static final int MOTOR_COMMAND_DELAY_MS = 200;     // M17, M18 commands
+    private static final int HOME_COMMAND_DELAY_MS = 500;      // G28 homing
+    /////////
+    ///
+    private static final float PEN_UP_Z = 5.0f;     // Z coordinate for pen up
+    private static final float PEN_DOWN_Z = 0.0f;
+
+
+
+    // UI
+    private TextView tvTerminal, tvSelectedFile, tvGCodeProgress;
+    private Button btnConnect, btnDisconnect, btnClearTerminal, btnRefreshDevices,
+            btnUploadGCode, btnSendGCode, btnStopGCode, btnHome;
     private EditText etGCodeInput;
-    private Button btnSendGCode;
-    private Button btnStopGCode;
-    private TextView tvGCodeProgress;
-
-    // G-code sending control with proper flow control
-    private List<String> gCodeQueue = new ArrayList<>();
-    private int currentGCodeIndex = 0;
-    private boolean isGCodeRunning = false;
-    private Handler gCodeHandler = new Handler(Looper.getMainLooper());
-    private int gCodeDelay = 100; // Increased delay for better reliability
-
-    // Flow control variables
-    private boolean waitingForOk = false;
-    private long lastCommandTime = 0;
-    private int commandsSent = 0;
-    private int commandsProcessed = 0;
-    private static final int COMMAND_TIMEOUT_MS = 45000; // Increased timeout
-    private static final int INTER_COMMAND_DELAY_MS = 50; // Increased delay
-
     private Spinner spinnerDevices;
-    private ArrayList<BluetoothDevice> deviceList = new ArrayList<>();
-    private StringBuilder terminalOutput = new StringBuilder();
+
+
+
+    // G-code execution state
+    private final List<String> gCodeQueue = new ArrayList<>();
+    private final ArrayList<BluetoothDevice> deviceList = new ArrayList<>();
+    private final StringBuilder terminalOutput = new StringBuilder();
+    private final Handler gCodeHandler = new Handler(Looper.getMainLooper());
+    private int currentGCodeIndex = 0, commandsSent = 0, commandsProcessed = 0;
+    private boolean isGCodeRunning = false, waitingForOk = false;
+    private long lastCommandTime = 0;
     private Uri selectedGCodeFileUri = null;
 
-    // Home button
-    private Button btnHome;
+
+
+
+
+
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,23 +92,18 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
 
         bluetoothHelper = new BluetoothHelper(this);
 
-        // Initialize UI elements
         initializeViews();
-
-        // Terminal should be scrollable
         tvTerminal.setMovementMethod(new ScrollingMovementMethod());
 
-        // Check if Bluetooth is supported
+        // Check BT
         if (!bluetoothHelper.isBluetoothSupported()) {
             Toast.makeText(this, "Bluetooth is not supported on this device", Toast.LENGTH_LONG).show();
             finish();
             return;
         }
 
-        // Check permissions
-        checkBluetoothPermissions();
 
-        // Check Bluetooth status and enable if needed
+        checkBluetoothPermissions();
         if (!bluetoothHelper.isBluetoothEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             // Check permission based on Android version
@@ -113,13 +117,10 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
                 }
             }
         } else {
-            // Only load devices if permissions are already granted
             if (hasBluetoothPermissions()) {
                 loadPairedDevices();
             }
         }
-
-        // Setup callbacks and listeners
         setupCallbacks();
         setupButtonListeners();
     }
@@ -344,6 +345,17 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
         updateTerminalDisplay();
     }
 
+    private void initializePenPlotter() {
+        // Send initialization commands for pen plotter
+        sendGrblCommand("G21"); // Set units to millimeters
+        sendGrblCommand("G90"); // Absolute positioning
+        sendGrblCommand("G92 X0 Y0 Z0"); // Set current position as origin
+        sendGrblCommand("G0 Z" + PEN_UP_Z); // Start with pen up
+    }
+
+
+
+
     private void goHome() {
         if (!bluetoothHelper.isConnected()) {
             Toast.makeText(this, "Not connected!", Toast.LENGTH_SHORT).show();
@@ -353,8 +365,8 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
         terminalOutput.append("[MOVING TO HOME POSITION]\n");
         updateTerminalDisplay();
 
-        // Simple home command - move to bottom-left corner (0,0)
-        sendGrblCommand("M17"); // Enable motors
+
+       // sendGrblCommand("M17"); // Enable motors
         gCodeHandler.postDelayed(() -> sendGrblCommand("G28"), 500); // Use G28 home command
 
         Toast.makeText(this, "Homing to (0,0)...", Toast.LENGTH_SHORT).show();
@@ -379,7 +391,7 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
             return;
         }
 
-        // Parse G-code commands with better filtering
+        // Parse G-code commands with pen plotter conversion
         gCodeQueue.clear();
         String[] lines = gCodeText.split("\n");
         for (String line : lines) {
@@ -390,7 +402,10 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
                     !line.startsWith("(") &&
                     !line.startsWith("G21") &&  // Skip unit commands
                     !line.startsWith("G90")) {   // Skip absolute mode (already default)
-                gCodeQueue.add(line);
+
+                // Convert the G-code line for pen plotter BEFORE adding to queue
+                String convertedLine = convertGCodeForPenPlotter(line);
+                gCodeQueue.add(convertedLine);
             }
         }
 
@@ -410,15 +425,94 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
         updateGCodeProgress();
         updateGCodeButtons();
 
-        // Send initial connection commands
-        terminalOutput.append("[STARTING G-CODE EXECUTION - ").append(gCodeQueue.size()).append(" commands]\n");
+        // Send initial connection commands for pen plotter
+        terminalOutput.append("[STARTING PEN PLOTTER EXECUTION - ").append(gCodeQueue.size()).append(" commands]\n");
         updateTerminalDisplay();
-        sendGrblCommand("M17"); // Enable motors
-        sendGrblCommand("DEBUG"); // Enable debug mode
+
+        // Initialize pen plotter
+        initializePenPlotter();
 
         gCodeHandler.postDelayed(() -> {
             sendNextGCodeCommandWithDelay();
-        }, 1000); // Give Arduino more time to process initial commands
+        }, 2000); // Extra time for pen plotter initialization
+
+    }
+
+    private String convertGCodeForPenPlotter(String gcodeLine) {
+        String line = gcodeLine.trim().toUpperCase();
+
+        // Skip empty lines, comments, and non-movement commands
+        if (line.isEmpty() || line.startsWith(";") || line.startsWith("(") ||
+                line.startsWith("M") || line.startsWith("G28") || line.startsWith("G92")) {
+            return gcodeLine;
+        }
+
+        // Handle G0 commands (pen up movement)
+        if (line.startsWith("G0") || line.startsWith("G00")) {
+            return convertToMovementCommand(line, PEN_UP_Z, "G0");
+        }
+
+        // Handle G1 commands (pen down movement)
+        if (line.startsWith("G1") || line.startsWith("G01")) {
+            return convertToMovementCommand(line, PEN_DOWN_Z, "G1");
+        }
+
+        // Return original line if no conversion needed
+        return gcodeLine;
+    }
+
+    private String convertToMovementCommand(String line, float zValue, String gCommand) {
+        StringBuilder convertedCommand = new StringBuilder();
+
+        // Start with the G command
+        convertedCommand.append(gCommand);
+
+        // Extract X and Y coordinates if present
+        String xCoord = extractCoordinate(line, "X");
+        String yCoord = extractCoordinate(line, "Y");
+        String feedRate = extractCoordinate(line, "F");
+
+        // Add coordinates to command
+        if (xCoord != null) {
+            convertedCommand.append(" X").append(xCoord);
+        }
+        if (yCoord != null) {
+            convertedCommand.append(" Y").append(yCoord);
+        }
+
+        // Always add Z coordinate for pen up/down
+        convertedCommand.append(" Z").append(zValue);
+
+        // Add feed rate if present
+        if (feedRate != null) {
+            convertedCommand.append(" F").append(feedRate);
+        }
+
+        return convertedCommand.toString();
+    }
+
+    private String extractCoordinate(String line, String axis) {
+        int index = line.indexOf(axis);
+        if (index == -1) return null;
+
+        // Start after the axis letter
+        int start = index + 1;
+        int end = start;
+
+        // Find the end of the number (including decimal points and negative signs)
+        while (end < line.length()) {
+            char c = line.charAt(end);
+            if (Character.isDigit(c) || c == '.' || c == '-') {
+                end++;
+            } else {
+                break;
+            }
+        }
+
+        if (end > start) {
+            return line.substring(start, end);
+        }
+        return null;
     }
 
     private void sendNextGCodeCommandWithDelay() {
@@ -467,8 +561,7 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
         sendGrblCommand(command);
         currentGCodeIndex++;
 
-        // Schedule next command with proper delay
-        gCodeHandler.postDelayed(this::sendNextGCodeCommandWithDelay, Math.max(gCodeDelay, INTER_COMMAND_DELAY_MS));
+        gCodeHandler.postDelayed(this::sendNextGCodeCommandWithDelay, Math.max(DEFAULT_GCODE_DELAY_MS, INTER_COMMAND_DELAY_MS));
     }
 
     private void finishGCodeExecution() {
@@ -635,7 +728,7 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
         List<String> deviceNames = new ArrayList<>();
 
         // Add debug output to terminal
-        terminalOutput.append("[SCANNING FOR PAIRED DEVICES...]\n");
+        terminalOutput.append("[SCANNING DEVICES...]\n");
         updateTerminalDisplay();
 
         // Check permissions based on Android version
@@ -684,7 +777,7 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
             terminalOutput.append("[DEVICE SCAN COMPLETE]\n");
         } else {
             terminalOutput.append("[NO PAIRED DEVICES FOUND]\n");
-            terminalOutput.append("[PLEASE PAIR YOUR HC-06 DEVICE IN SYSTEM SETTINGS]\n");
+            terminalOutput.append("[PLEASE PAIR YOUR DEVICE IN SETTINGS]\n");
         }
 
         updateTerminalDisplay();
@@ -693,11 +786,6 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerDevices.setAdapter(adapter);
 
-        if (deviceNames.isEmpty()) {
-            Toast.makeText(this, "No paired devices found. Please pair your HC-06 in Android Settings.", Toast.LENGTH_LONG).show();
-        } else {
-            Toast.makeText(this, "Found " + deviceNames.size() + " paired devices", Toast.LENGTH_SHORT).show();
-        }
     }
 
     @Override
