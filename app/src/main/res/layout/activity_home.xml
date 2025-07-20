@@ -23,7 +23,7 @@
         android:id="@+id/welcome_text_view"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Welcome to DrawBot"
+        android:text="Willkommen zu unserem DrawBot"
         android:textSize="18sp"
         android:textColor="#333"
         android:gravity="center"
@@ -40,25 +40,31 @@
         android:backgroundTint="#4CAF50"
         android:textColor="#FFFFFF" />
 
-    <!-- Settings Button -->
-    <Button
-        android:id="@+id/settings_button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Einstellungen"
-        android:textSize="18sp"
-        android:backgroundTint="#2196F3"
-        android:textColor="#FFFFFF" />
+
+
 
     <!-- Image to G-Code Button -->
     <Button
         android:id="@+id/image_to_gcode_button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Image to G-Code konvertieren"
-        android:textSize="18sp"
+
         android:backgroundTint="#FF9800"
+        android:text="Image zu G-Code konvertieren"
         android:textColor="#FFFFFF"
-        android:layout_marginTop="24dp" />
+        android:textSize="18sp" />
+
+    <!-- Settings Button -->
+    <Button
+        android:id="@+id/settings_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="180dp"
+        android:text="Einstellungen"
+        android:textSize="18sp"
+        android:backgroundTint="#2196F3"
+        android:textColor="#FFFFFF" />
+
+
 
 </LinearLayout>

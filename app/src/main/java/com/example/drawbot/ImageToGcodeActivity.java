@@ -15,6 +15,7 @@ public class ImageToGcodeActivity extends AppCompatActivity {
 
         Button btnToSvg = findViewById(R.id.btnToSvg);
         Button btnToGcode = findViewById(R.id.btnToGcode);
+        Button btnToTerminal = findViewById(R.id.btnToTerminal);
 
         btnToSvg.setOnClickListener(v -> {
             Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://picsvg.com/"));
@@ -24,6 +25,9 @@ public class ImageToGcodeActivity extends AppCompatActivity {
             Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://sameer.github.io/svg2gcode/"));
             startActivity(browserIntent);
         });
+        btnToTerminal.setOnClickListener(v -> {
+            Intent intent = new Intent(ImageToGcodeActivity.this, BluetoothTerminalActivity.class);
+            startActivity(intent);
+        });
     }
 }
-

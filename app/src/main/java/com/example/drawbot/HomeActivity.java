@@ -1,6 +1,7 @@
 package com.example.drawbot;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -50,16 +51,21 @@ public class HomeActivity extends AppCompatActivity {
             welcomeTextView.setText("Welcome to DrawBot");
         }
 
-        // Set up button listener - only Bluetooth Terminal now
+        // Set up button listeners
         bluetoothTerminalButton.setOnClickListener(v -> {
             startActivity(new Intent(HomeActivity.this, BluetoothTerminalActivity.class));
         });
+
         settingsButton.setOnClickListener(v -> {
             startActivity(new Intent(HomeActivity.this, SettingsActivity.class));
         });
-        imageToGcodeButton.setOnClickListener(v -> {
-            startActivity(new Intent(HomeActivity.this, ImageToGcodeActivity.class));
-        });
+
+        // Image to G-Code button - navigate to ImageToGcodeActivity
+        if (imageToGcodeButton != null) {
+            imageToGcodeButton.setOnClickListener(v -> {
+                startActivity(new Intent(HomeActivity.this, ImageToGcodeActivity.class));
+            });
+        }
     }
 
     @Override

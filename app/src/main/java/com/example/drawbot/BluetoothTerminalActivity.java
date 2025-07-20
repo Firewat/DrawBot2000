@@ -50,27 +50,23 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
     // Multi-line G-code variables
     private EditText etGCodeInput;
     private Button btnSendGCode;
-    private Button btnPauseGCode;
     private Button btnStopGCode;
     private TextView tvGCodeProgress;
-    private TextView tvGCodeDelay;
-    private EditText etGCodeDelay;
 
     // G-code sending control with proper flow control
     private List<String> gCodeQueue = new ArrayList<>();
     private int currentGCodeIndex = 0;
     private boolean isGCodeRunning = false;
-    private boolean isGCodePaused = false;
     private Handler gCodeHandler = new Handler(Looper.getMainLooper());
-    private int gCodeDelay = 50; // Default delay in milliseconds
+    private int gCodeDelay = 100; // Increased delay for better reliability
 
     // Flow control variables
     private boolean waitingForOk = false;
     private long lastCommandTime = 0;
     private int commandsSent = 0;
     private int commandsProcessed = 0;
-    private static final int COMMAND_TIMEOUT_MS = 10000; // 10 seconds
-    private static final int INTER_COMMAND_DELAY_MS = 20; // 20ms between commands
+    private static final int COMMAND_TIMEOUT_MS = 45000; // Increased timeout
+    private static final int INTER_COMMAND_DELAY_MS = 50; // Increased delay
 
     private Spinner spinnerDevices;
     private ArrayList<BluetoothDevice> deviceList = new ArrayList<>();
@@ -141,11 +137,8 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
         // Multi-line G-code UI elements
         etGCodeInput = findViewById(R.id.etGCodeInput);
         btnSendGCode = findViewById(R.id.btnSendGCode);
-        btnPauseGCode = findViewById(R.id.btnPauseGCode);
         btnStopGCode = findViewById(R.id.btnStopGCode);
         tvGCodeProgress = findViewById(R.id.tvGCodeProgress);
-        tvGCodeDelay = findViewById(R.id.tvGCodeDelay);
-        etGCodeDelay = findViewById(R.id.etGCodeDelay);
 
         // Home-Button initialisieren
         btnHome = findViewById(R.id.btnHome);
@@ -169,7 +162,7 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
                 else if (cleanMsg.startsWith("Error:")) {
                     waitingForOk = false;
                     Log.e(TAG, "Arduino error: " + cleanMsg);
-                    // Continue execution even on errors
+                    commandsProcessed++; // Count errors to keep progress moving
                 }
                 // Handle other acknowledgments (ook, k)
                 else if (cleanMsg.equals("ook") || cleanMsg.equals("k")) {
@@ -177,28 +170,33 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
                     commandsProcessed++;
                     updateGCodeProgress();
                 }
+                // Handle simple "error" response too
+                else if (cleanMsg.equals("error")) {
+                    waitingForOk = false;
+                    Log.e(TAG, "Arduino error received");
+                    commandsProcessed++; // Count errors to keep progress moving
+                }
             }
         });
 
         // Callback for connection status
         bluetoothHelper.setStatusCallback(connected -> {
-            btnConnect.setEnabled(!connected);
-            btnDisconnect.setEnabled(connected);
-            btnSendGCode.setEnabled(connected);
-            btnUploadGCode.setEnabled(connected);
-            etGCodeInput.setEnabled(connected);
+            if (btnConnect != null) btnConnect.setEnabled(!connected);
+            if (btnDisconnect != null) btnDisconnect.setEnabled(connected);
+            if (btnSendGCode != null) btnSendGCode.setEnabled(connected);
+            if (btnUploadGCode != null) btnUploadGCode.setEnabled(connected);
+            if (etGCodeInput != null) etGCodeInput.setEnabled(connected);
 
             // Enable multi-line G-code input and controls
-            etGCodeInput.setEnabled(connected);
-            btnSendGCode.setEnabled(connected && !isGCodeRunning);
-            btnPauseGCode.setEnabled(connected && isGCodeRunning);
-            btnStopGCode.setEnabled(connected && isGCodeRunning);
-            etGCodeDelay.setEnabled(connected);
-            btnHome.setEnabled(connected);
+            if (etGCodeInput != null) etGCodeInput.setEnabled(connected);
+            if (btnSendGCode != null) btnSendGCode.setEnabled(connected && !isGCodeRunning);
+            if (btnStopGCode != null) btnStopGCode.setEnabled(connected && isGCodeRunning);
+            if (btnHome != null) btnHome.setEnabled(connected);
 
             if (connected) {
                 Toast.makeText(BluetoothTerminalActivity.this, "Connected", Toast.LENGTH_SHORT).show();
                 terminalOutput.append("[CONNECTED]\n");
+                terminalOutput.append("[Send 'TEST' for motor test, 'CAL' for calibration]\n");
             } else {
                 Toast.makeText(BluetoothTerminalActivity.this, "Disconnected", Toast.LENGTH_SHORT).show();
                 terminalOutput.append("[DISCONNECTED]\n");
@@ -247,15 +245,7 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
 
         // G-code control buttons
         btnSendGCode.setOnClickListener(v -> sendGCodeCommands());
-        btnPauseGCode.setOnClickListener(v -> toggleGCodePause());
         btnStopGCode.setOnClickListener(v -> stopGCodeCommands());
-
-        // G-code delay input
-        etGCodeDelay.setOnFocusChangeListener((v, hasFocus) -> {
-            if (!hasFocus) {
-                updateGCodeDelay();
-            }
-        });
 
         // Home-Button Listener
         if (btnHome != null) {
@@ -363,11 +353,11 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
         terminalOutput.append("[MOVING TO HOME POSITION]\n");
         updateTerminalDisplay();
 
-        // Simple home command for our Arduino firmware
+        // Simple home command - move to bottom-left corner (0,0)
         sendGrblCommand("M17"); // Enable motors
-        gCodeHandler.postDelayed(() -> sendGrblCommand("G28"), 300); // Home command
+        gCodeHandler.postDelayed(() -> sendGrblCommand("G28"), 500); // Use G28 home command
 
-        Toast.makeText(this, "Homing...", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Homing to (0,0)...", Toast.LENGTH_SHORT).show();
     }
 
     private void updateTerminalDisplay() {
@@ -389,12 +379,17 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
             return;
         }
 
-        // Parse G-code commands
+        // Parse G-code commands with better filtering
         gCodeQueue.clear();
         String[] lines = gCodeText.split("\n");
         for (String line : lines) {
             line = line.trim();
-            if (!line.isEmpty() && !line.startsWith(";") && !line.startsWith("(")) {
+            // Skip empty lines, comments, and unit commands that can cause issues
+            if (!line.isEmpty() &&
+                    !line.startsWith(";") &&
+                    !line.startsWith("(") &&
+                    !line.startsWith("G21") &&  // Skip unit commands
+                    !line.startsWith("G90")) {   // Skip absolute mode (already default)
                 gCodeQueue.add(line);
             }
         }
@@ -412,22 +407,22 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
 
         // Start execution
         isGCodeRunning = true;
-        isGCodePaused = false;
         updateGCodeProgress();
         updateGCodeButtons();
 
         // Send initial connection commands
-        terminalOutput.append("[STARTING G-CODE EXECUTION]\n");
+        terminalOutput.append("[STARTING G-CODE EXECUTION - ").append(gCodeQueue.size()).append(" commands]\n");
         updateTerminalDisplay();
         sendGrblCommand("M17"); // Enable motors
+        sendGrblCommand("DEBUG"); // Enable debug mode
 
         gCodeHandler.postDelayed(() -> {
             sendNextGCodeCommandWithDelay();
-        }, 500); // Give Arduino time to enable motors
+        }, 1000); // Give Arduino more time to process initial commands
     }
 
     private void sendNextGCodeCommandWithDelay() {
-        if (!isGCodeRunning || isGCodePaused) {
+        if (!isGCodeRunning) {
             return;
         }
 
@@ -456,10 +451,13 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
             // Check for timeout
             if (System.currentTimeMillis() - lastCommandTime > COMMAND_TIMEOUT_MS) {
                 Log.w(TAG, "Command timeout, continuing anyway");
+                terminalOutput.append("[TIMEOUT - CONTINUING]\n");
+                updateTerminalDisplay();
                 waitingForOk = false;
+                commandsProcessed++; // Count timeout as processed
             } else {
-                // Still waiting, check again in 10ms
-                gCodeHandler.postDelayed(this::sendNextGCodeCommandWithDelay, 10);
+                // Still waiting, check again in 20ms
+                gCodeHandler.postDelayed(this::sendNextGCodeCommandWithDelay, 20);
                 return;
             }
         }
@@ -475,7 +473,6 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
 
     private void finishGCodeExecution() {
         isGCodeRunning = false;
-        isGCodePaused = false;
         waitingForOk = false;
         updateGCodeButtons();
 
@@ -486,25 +483,8 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
         });
     }
 
-    private void toggleGCodePause() {
-        isGCodePaused = !isGCodePaused;
-
-        if (isGCodePaused) {
-            gCodeHandler.removeCallbacksAndMessages(null);
-            btnPauseGCode.setText("▶ Resume");
-            terminalOutput.append("[G-CODE PAUSED]\n");
-            updateTerminalDisplay();
-        } else {
-            btnPauseGCode.setText("⏸ Pause");
-            terminalOutput.append("[G-CODE RESUMED]\n");
-            updateTerminalDisplay();
-            sendNextGCodeCommandWithDelay();
-        }
-    }
-
     private void stopGCodeCommands() {
         isGCodeRunning = false;
-        isGCodePaused = false;
         waitingForOk = false;
         gCodeHandler.removeCallbacksAndMessages(null); // Remove all pending callbacks
 
@@ -522,44 +502,22 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
     private void updateGCodeProgress() {
         int totalCommands = gCodeQueue.size() + 2; // +2 for M400 and M18
         String progress = commandsProcessed + "/" + totalCommands + " commands processed";
-        tvGCodeProgress.setText(progress);
+        if (tvGCodeProgress != null) {
+            tvGCodeProgress.setText(progress);
+        }
 
         // Calculate percentage based on processed commands
         int percentage = totalCommands > 0 ? (commandsProcessed * 100) / totalCommands : 0;
 
-        // You can add a progress bar here if needed
-        Log.d(TAG, "Progress: " + percentage + "%");
+        // Log progress for debugging
+        Log.d(TAG, "Progress: " + percentage + "% (" + progress + ")");
     }
 
     private void updateGCodeButtons() {
         boolean connected = bluetoothHelper.isConnected();
-        btnSendGCode.setEnabled(connected && !isGCodeRunning);
-        btnPauseGCode.setEnabled(connected && isGCodeRunning);
-        btnStopGCode.setEnabled(connected && isGCodeRunning);
-        btnHome.setEnabled(connected && !isGCodeRunning);
-
-        if (!isGCodeRunning) {
-            btnPauseGCode.setText("⏸ Pause");
-        }
-    }
-
-    private void updateGCodeDelay() {
-        try {
-            String delayText = etGCodeDelay.getText().toString().trim();
-            if (!delayText.isEmpty()) {
-                int newDelay = Integer.parseInt(delayText);
-                if (newDelay >= 10 && newDelay <= 5000) {
-                    gCodeDelay = newDelay;
-                    tvGCodeDelay.setText("Delay: " + gCodeDelay + "ms");
-                } else {
-                    Toast.makeText(this, "Delay must be between 10-5000ms", Toast.LENGTH_SHORT).show();
-                    etGCodeDelay.setText(String.valueOf(gCodeDelay));
-                }
-            }
-        } catch (NumberFormatException e) {
-            Toast.makeText(this, "Invalid delay value", Toast.LENGTH_SHORT).show();
-            etGCodeDelay.setText(String.valueOf(gCodeDelay));
-        }
+        if (btnSendGCode != null) btnSendGCode.setEnabled(connected && !isGCodeRunning);
+        if (btnStopGCode != null) btnStopGCode.setEnabled(connected && isGCodeRunning);
+        if (btnHome != null) btnHome.setEnabled(connected && !isGCodeRunning);
     }
 
     private void checkBluetoothPermissions() {
@@ -769,7 +727,6 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
         commandsSent = 0;
         commandsProcessed = 0;
         isGCodeRunning = false;
-        isGCodePaused = false;
         waitingForOk = false;
         if (gCodeHandler != null) {
             gCodeHandler.removeCallbacksAndMessages(null);

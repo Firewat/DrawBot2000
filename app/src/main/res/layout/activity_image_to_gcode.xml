@@ -9,7 +9,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Image to G-Code Konvertierung"
+        android:text="Bild zu G-Code Konvertierung"
         android:textSize="22sp"
         android:textStyle="bold"
         android:textColor="#222"
@@ -19,7 +19,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="1. IMAGE TO SVG"
+        android:text="1. BILD (JPG/PNG/ETC.) ZU SVG"
         android:textSize="18sp"
         android:textStyle="bold"
         android:layout_marginBottom="8dp" />
@@ -36,7 +36,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="2. SVG TO GCODE"
+        android:text="2. SVG ZU GCODE"
         android:textSize="18sp"
         android:textStyle="bold"
         android:layout_marginBottom="8dp" />
@@ -46,6 +46,22 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Zu svg2gcode (SVG to GCODE)"
+        android:backgroundTint="#2196F3"
+        android:textColor="#FFFFFF" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="3. ZUM TERMINAL"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginTop="24dp" />/>
+
+    <Button
+        android:id="@+id/btnToTerminal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Zum Terminal"
         android:backgroundTint="#4CAF50"
         android:textColor="#FFFFFF" />
 
