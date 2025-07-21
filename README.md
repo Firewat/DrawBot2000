@@ -1,4 +1,4 @@
-# CNC Plotter "DrawBot 2000" With Android App Integration
+# CNC Plotter "DrawBot 2000" with Android App Integration
 
 Android app to control a pen plotter via Bluetooth using GRBL firmware.
 
