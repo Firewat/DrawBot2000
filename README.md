@@ -29,7 +29,7 @@ Android app to control a pen plotter via Bluetooth using GRBL firmware.
 ## Settings
 
 ### Standard Configuration:
-Go to Settings to configure motors:
+(Go to Settings to configure motors:)
 - Steps per mm: 65.0 (for 28BYJ-48)
 - Max speed: 800 mm/min
 - Acceleration: 10 mm/sec²
