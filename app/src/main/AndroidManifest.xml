@@ -21,7 +21,6 @@
         android:theme="@style/Theme.DrawBot"
         tools:targetApi="31">
 
-        <!-- Login Activity as the main launcher -->
         <activity
             android:name=".LoginActivity"
             android:exported="true"
@@ -32,43 +31,36 @@
             </intent-filter>
         </activity>
 
-        <!-- Registration Activity -->
         <activity
             android:name=".RegisterActivity"
             android:exported="false"
             android:theme="@style/Theme.DrawBot" />
 
-        <!-- Main Activity -->
         <activity
             android:name=".MainActivity"
             android:exported="false"
             android:theme="@style/Theme.DrawBot" />
 
-        <!-- Home Activity -->
         <activity
             android:name=".HomeActivity"
             android:exported="false"
             android:theme="@style/Theme.DrawBot" />
 
-        <!-- Bluetooth Terminal Activity -->
         <activity
             android:name=".BluetoothTerminalActivity"
             android:exported="false"
             android:theme="@style/Theme.DrawBot" />
 
-        <!-- Settings Activity -->
         <activity
             android:name=".SettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.DrawBot" />
 
-        <!-- Bluetooth Connect Activity -->
         <activity
             android:name=".BluetoothConnectActivity"
             android:exported="false"
             android:theme="@style/Theme.DrawBot" />
 
-        <!-- ImageToGcode Activity -->
         <activity
             android:name=".ImageToGcodeActivity"
             android:exported="false"
