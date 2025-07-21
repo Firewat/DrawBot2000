@@ -80,6 +80,11 @@ G0 X0 Y0      ; Return to origin (pen up)
 - Performance optimizations and memory management
 - Hardware compatibility testing
 
+### Creators
+
+- David Levi (HWR Berlin)
+- Lasse Schulz (HWR Berlin)
+  
 ## License
 
 MIT
