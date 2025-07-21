@@ -44,23 +44,21 @@ public class BluetoothHelper {
     }
 
     public Set<BluetoothDevice> getPairedDevices() {
-        // Berechtigungsprüfung je nach Android-Version
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             // Android 12+ - neue Bluetooth-Berechtigungen
             if (ActivityCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                Log.e(TAG, "BLUETOOTH_CONNECT Berechtigung fehlt");
+                Log.e(TAG, "BLUETOOTH_CONNECT ERROR: Authorisation missing");
                 return null;
             }
         } else {
-            // Android 11 und früher - klassische Bluetooth-Berechtigungen
             if (ActivityCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH) != PackageManager.PERMISSION_GRANTED) {
-                Log.e(TAG, "BLUETOOTH Berechtigung fehlt");
+                Log.e(TAG, "BLUETOOTH_CONNECT ERROR: Authorisation missing");
                 return null;
             }
         }
 
         if (bluetoothAdapter == null) {
-            Log.e(TAG, "BluetoothAdapter ist null");
+            Log.e(TAG, "BluetoothAdapter is null");
             return null;
         }
 
@@ -70,22 +68,19 @@ public class BluetoothHelper {
     public void connectToDevice(BluetoothDevice device, ConnectionCallback callback) {
         new Thread(() -> {
             try {
-                // Berechtigungsprüfung je nach Android-Version
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     // Android 12+ - neue Bluetooth-Berechtigungen
                     if (ActivityCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                        handler.post(() -> callback.onFailure("BLUETOOTH_CONNECT Berechtigung fehlt"));
+                        handler.post(() -> callback.onFailure("BLUETOOTH_CONNECT ERROR: Authorisation missing"));
                         return;
                     }
                 } else {
-                    // Android 11 und früher - klassische Bluetooth-Berechtigungen
                     if (ActivityCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH) != PackageManager.PERMISSION_GRANTED) {
-                        handler.post(() -> callback.onFailure("BLUETOOTH Berechtigung fehlt"));
+                        handler.post(() -> callback.onFailure("BLUETOOTH_CONNECT ERROR: Authorisation missing"));
                         return;
                     }
                 }
 
-                // Falls bereits eine Verbindung besteht, zuerst trennen
                 if (bluetoothSocket != null) {
                     bluetoothSocket.close();
                 }
@@ -136,7 +131,7 @@ public class BluetoothHelper {
                         }
                     }
                 } catch (IOException e) {
-                    Log.e(TAG, "Fehler beim Lesen der Daten: " + e.getMessage());
+                    Log.e(TAG, "Error when reading the data: " + e.getMessage());
                     break;
                 }
             }
@@ -145,7 +140,7 @@ public class BluetoothHelper {
 
     public boolean sendData(String message) {
         if (!isConnected || outputStream == null) {
-            Log.e(TAG, "Nicht verbunden oder OutputStream ist null");
+            Log.e(TAG, "Not connected or OutputStream is zero");
             return false;
         }
 
@@ -154,7 +149,7 @@ public class BluetoothHelper {
                 outputStream.write(message.getBytes());
                 outputStream.flush();
             } catch (IOException e) {
-                Log.e(TAG, "Fehler beim Senden: " + e.getMessage());
+                Log.e(TAG, "Error during transmission: " + e.getMessage());
                 isConnected = false;
 
                 if (statusCallback != null) {
@@ -189,7 +184,7 @@ public class BluetoothHelper {
                 handler.post(() -> statusCallback.onStatusChanged(false));
             }
         } catch (IOException e) {
-            Log.e(TAG, "Fehler beim Trennen: " + e.getMessage());
+            Log.e(TAG, "Error when disconnecting: " + e.getMessage());
         }
     }
 

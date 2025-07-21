@@ -7,7 +7,6 @@
     android:padding="24dp"
     android:background="#F5F5F5">
 
-    <!-- Schlichter App Header ohne Emoji -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -18,12 +17,11 @@
         android:layout_gravity="center_horizontal"
         android:layout_marginBottom="32dp" />
 
-    <!-- Willkommensnachricht -->
     <TextView
         android:id="@+id/welcome_text_view"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Willkommen zu unserem DrawBot"
+        android:text="Welcome to DrawBot"
         android:textSize="18sp"
         android:textColor="#333"
         android:gravity="center"
@@ -50,7 +48,7 @@
         android:layout_height="wrap_content"
 
         android:backgroundTint="#FF9800"
-        android:text="Image zu G-Code konvertieren"
+        android:text="Convert Image to G-Code "
         android:textColor="#FFFFFF"
         android:textSize="18sp" />
 
@@ -60,7 +58,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="180dp"
-        android:text="Einstellungen"
+        android:text="Settings"
         android:textSize="18sp"
         android:backgroundTint="#2196F3"
         android:textColor="#FFFFFF" />

@@ -16,7 +16,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="DrawBot Registrierung"
+        android:text="DrawBot Signup"
         android:textSize="28sp"
         android:textStyle="bold"
         android:textColor="@android:color/black"
@@ -45,7 +45,7 @@
             android:id="@+id/editTextPassword"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Passwort"
+            android:hint="Password"
             android:inputType="textPassword" />
 
     </com.google.android.material.textfield.TextInputLayout>
@@ -59,7 +59,7 @@
             android:id="@+id/editTextConfirmPassword"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Passwort bestätigen"
+            android:hint="Confirm Password"
             android:inputType="textPassword" />
 
     </com.google.android.material.textfield.TextInputLayout>
@@ -68,7 +68,7 @@
         android:id="@+id/buttonRegister"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Registrieren"
+        android:text="Register"
         android:textSize="16sp"
         android:layout_marginBottom="16dp"
         android:background="@android:color/holo_green_dark"
@@ -78,7 +78,7 @@
         android:id="@+id/buttonBackToLogin"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Zurück zur Anmeldung"
+        android:text="Back to Login"
         android:textSize="16sp"
         android:background="@android:color/holo_blue_dark"
         android:textColor="@android:color/white" />

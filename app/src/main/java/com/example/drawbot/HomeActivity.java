@@ -1,7 +1,6 @@
 package com.example.drawbot;
 
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -25,25 +24,20 @@ public class HomeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
 
-        // Initialize Firebase Auth
         mAuth = FirebaseAuth.getInstance();
 
-        // Check if user is authenticated
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser == null) {
-            // User is not authenticated, redirect to login
             startActivity(new Intent(HomeActivity.this, LoginActivity.class));
             finish();
             return;
         }
 
-        // Initialize views
         bluetoothTerminalButton = findViewById(R.id.bluetooth_terminal_button);
         welcomeTextView = findViewById(R.id.welcome_text_view);
         Button settingsButton = findViewById(R.id.settings_button);
         Button imageToGcodeButton = findViewById(R.id.image_to_gcode_button);
 
-        // Set welcome message
         String email = currentUser.getEmail();
         if (email != null) {
             welcomeTextView.setText("Welcome, " + email);
@@ -51,7 +45,6 @@ public class HomeActivity extends AppCompatActivity {
             welcomeTextView.setText("Welcome to DrawBot");
         }
 
-        // Set up button listeners
         bluetoothTerminalButton.setOnClickListener(v -> {
             startActivity(new Intent(HomeActivity.this, BluetoothTerminalActivity.class));
         });
@@ -60,7 +53,7 @@ public class HomeActivity extends AppCompatActivity {
             startActivity(new Intent(HomeActivity.this, SettingsActivity.class));
         });
 
-        // Image to G-Code button - navigate to ImageToGcodeActivity
+
         if (imageToGcodeButton != null) {
             imageToGcodeButton.setOnClickListener(v -> {
                 startActivity(new Intent(HomeActivity.this, ImageToGcodeActivity.class));
@@ -79,7 +72,6 @@ public class HomeActivity extends AppCompatActivity {
         int id = item.getItemId();
 
         if (id == R.id.action_logout) {
-            // Logout user
             mAuth.signOut();
             startActivity(new Intent(HomeActivity.this, LoginActivity.class));
             finish();

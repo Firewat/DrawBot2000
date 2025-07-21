@@ -75,41 +75,36 @@ public class LoginActivity extends AppCompatActivity {
 
         // Validate input
         if (TextUtils.isEmpty(email)) {
-            editTextEmail.setError("E-Mail ist erforderlich");
+            editTextEmail.setError("E-mail is required");
             return;
         }
 
         if (TextUtils.isEmpty(password)) {
-            editTextPassword.setError("Passwort ist erforderlich");
+            editTextPassword.setError("Password is required");
             return;
         }
 
         if (password.length() < 6) {
-            editTextPassword.setError("Passwort muss mindestens 6 Zeichen haben");
+            editTextPassword.setError("Password must have at least 6 characters");
             return;
         }
 
-        // Show progress bar
+
         progressBar.setVisibility(View.VISIBLE);
         buttonLogin.setEnabled(false);
 
-        // Sign in with Firebase
-        mAuth.signInWithEmailAndPassword(email, password)
-                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<AuthResult> task) {
-                        progressBar.setVisibility(View.GONE);
-                        buttonLogin.setEnabled(true);
 
-                        if (task.isSuccessful()) {
-                            // Sign in success
-                            FirebaseUser user = mAuth.getCurrentUser();
-                            Toast.makeText(LoginActivity.this, "Anmeldung erfolgreich!", Toast.LENGTH_SHORT).show();
-                            navigateToMainActivity();
-                        } else {
-                            // If sign in fails, display a message to the user
-                            Toast.makeText(LoginActivity.this, "Anmeldung fehlgeschlagen: " + task.getException().getMessage(), Toast.LENGTH_LONG).show();
-                        }
+        mAuth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this, task -> {
+                    progressBar.setVisibility(View.GONE);
+                    buttonLogin.setEnabled(true);
+
+                    if (task.isSuccessful()) {
+                        FirebaseUser user = mAuth.getCurrentUser();
+                        Toast.makeText(LoginActivity.this, "Registration successful", Toast.LENGTH_SHORT).show();
+                        navigateToMainActivity();
+                    } else {
+                        Toast.makeText(LoginActivity.this, "Login failed: " + task.getException().getMessage(), Toast.LENGTH_LONG).show();
                     }
                 });
     }

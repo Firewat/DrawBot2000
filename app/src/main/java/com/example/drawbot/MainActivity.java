@@ -24,20 +24,15 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Initialize Firebase Auth
         mAuth = FirebaseAuth.getInstance();
 
-        // Check Bluetooth permissions
         checkBluetoothPermissions();
 
-        // Check if user is already logged in
         FirebaseUser currentUser = mAuth.getCurrentUser();
 
         if (currentUser != null) {
-            // User is logged in - redirect to home page
             startActivity(new Intent(MainActivity.this, HomeActivity.class));
         } else {
-            // User is not logged in - redirect to login
             startActivity(new Intent(MainActivity.this, LoginActivity.class));
         }
         finish();

@@ -12,11 +12,10 @@
         android:background="#F5F5F5"
         android:gravity="center">
 
-        <!-- Kalibrierungseinstellungen -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Kalibrierung"
+            android:text="Calibration"
             android:textStyle="bold"
             android:textSize="20sp"
             android:layout_marginBottom="16dp"/>
@@ -49,16 +48,15 @@
             android:id="@+id/btnSendCalibration"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Kalibrierung senden"
+            android:text="Send Calibration "
             android:backgroundTint="#4CAF50"
             android:textColor="#FFFFFF"
             android:layout_marginBottom="32dp"/>
 
-        <!-- Profil löschen -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Profil"
+            android:text="Profile"
             android:textStyle="bold"
             android:textSize="20sp"
             android:layout_marginBottom="16dp"/>
@@ -67,7 +65,7 @@
             android:id="@+id/btnDeleteProfile"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Profil löschen"
+            android:text="Delete Profile"
             android:backgroundTint="#F44336"
             android:textColor="#FFFFFF"/>
 

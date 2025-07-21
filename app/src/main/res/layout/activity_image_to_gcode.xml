@@ -9,7 +9,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Bild zu G-Code Konvertierung"
+        android:text="Convert Image to G-Code"
         android:textSize="22sp"
         android:textStyle="bold"
         android:textColor="#222"
@@ -19,7 +19,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="1. BILD (JPG/PNG/ETC.) ZU SVG"
+        android:text="1. IMAGE (JPG/PNG/ETC.) TO SVG"
         android:textSize="18sp"
         android:textStyle="bold"
         android:layout_marginBottom="8dp" />
@@ -28,7 +28,7 @@
         android:id="@+id/btnToSvg"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Zu picsvg.com (Image to SVG)"
+        android:text="To picsvg.com (Image to SVG)"
         android:backgroundTint="#FF9800"
         android:textColor="#FFFFFF"
         android:layout_marginBottom="24dp" />
@@ -36,7 +36,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="2. SVG ZU GCODE"
+        android:text="2. SVG TO GCODE"
         android:textSize="18sp"
         android:textStyle="bold"
         android:layout_marginBottom="8dp" />
@@ -45,14 +45,14 @@
         android:id="@+id/btnToGcode"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Zu svg2gcode (SVG to GCODE)"
+        android:text="To svg2gcode (SVG to GCODE)"
         android:backgroundTint="#2196F3"
         android:textColor="#FFFFFF" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="3. ZUM TERMINAL"
+        android:text="3. To TERMINAL"
         android:textSize="18sp"
         android:textStyle="bold"
         android:layout_marginTop="24dp" />/>
@@ -61,7 +61,7 @@
         android:id="@+id/btnToTerminal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Zum Terminal"
+        android:text="Terminal"
         android:backgroundTint="#4CAF50"
         android:textColor="#FFFFFF" />
 

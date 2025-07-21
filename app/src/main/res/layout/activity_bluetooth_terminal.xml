@@ -29,7 +29,7 @@
                 android:id="@+id/btnRefreshDevices"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Aktualisieren"
+                android:text="Refresh"
                 android:textSize="14sp"
                 android:backgroundTint="#FF9800" />
         </LinearLayout>
@@ -45,7 +45,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Verbinden"
+                android:text="Connect"
                 android:backgroundTint="#4CAF50"
                 android:textColor="#FFFFFF"
                 android:layout_marginEnd="8dp" />
@@ -55,13 +55,13 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Trennen"
+                android:text="Disconnect"
                 android:enabled="false"
                 android:backgroundTint="#F44336"
                 android:textColor="#FFFFFF" />
         </LinearLayout>
 
-        <!-- Terminal-Ausgabe -->
+        <!-- Terminal-Output -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -98,14 +98,14 @@
                 android:id="@+id/tvTerminal"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="[G-CODE TERMINAL READY]\nVerbinde dich mit deinem DrawBot...\n"
+                android:text="[G-CODE TERMINAL READY]\nConnect to your DrawBot...\n"
                 android:textColor="#00FF00"
                 android:textSize="12sp"
                 android:fontFamily="monospace"
                 android:textIsSelectable="true" />
         </ScrollView>
 
-        <!-- G-Code Datei hochladen und Eingabe -->
+        <!-- G-Code Upload File -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -118,7 +118,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="G-Code Datei hochladen"
+                android:text="Upload G-code file"
                 android:textSize="14sp"
                 android:backgroundTint="#2196F3"
                 android:textColor="#FFFFFF"
@@ -129,7 +129,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Keine Datei ausgewählt"
+                android:text="No file selected"
                 android:textSize="12sp"
                 android:textColor="#666666"
                 android:gravity="center_vertical"
@@ -140,7 +140,7 @@
             android:id="@+id/etGCodeInput"
             android:layout_width="match_parent"
             android:layout_height="120dp"
-            android:hint="G-Code Befehle (eine pro Zeile)"
+            android:hint="G-code commands (one per line)"
             android:inputType="textMultiLine"
             android:gravity="top|start"
             android:fontFamily="monospace"
@@ -152,7 +152,7 @@
             android:textSize="12sp"
             android:layout_marginBottom="8dp" />
 
-        <!-- G-Code Steuerung -->
+        <!-- G-Code Commands -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -164,28 +164,23 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Senden"
+                android:text="Send"
                 android:enabled="false"
                 android:backgroundTint="#4CAF50"
                 android:textColor="#FFFFFF"
                 android:layout_marginEnd="4dp" />
-
-
-
             <Button
                 android:id="@+id/btnStopGCode"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Stopp"
+                android:text="Stop"
                 android:enabled="false"
                 android:backgroundTint="#F44336"
                 android:textColor="#FFFFFF"
                 android:layout_marginStart="4dp" />
         </LinearLayout>
 
-
-        <!-- G-Code Status und Delay -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -204,7 +199,7 @@
 
         </LinearLayout>
 
-        <!-- Home Button -->
+        <!-- Homing Button -->
         <Button
             android:id="@+id/btnHome"
             android:layout_width="match_parent"
