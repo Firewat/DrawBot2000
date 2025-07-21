@@ -4,6 +4,7 @@ Android app to control a pen plotter via Bluetooth using GRBL firmware.
 
 ## What it does
 
+- Authentification with Firebase (Login & Signup)
 - Connects to Arduino pen plotter over Bluetooth (HC-06)
 - Converts G-code files for pen plotting 
 - Real-time terminal output and progress
