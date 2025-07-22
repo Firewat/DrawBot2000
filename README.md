@@ -12,7 +12,7 @@ Android app to control a pen plotter via Bluetooth using GRBL firmware.
 
 ## Hardware needed
 
-- Arduino Uno with GRBL firmware (for our projectwe used: https://github.com/TGit-Tech/GRBL-28byj-48)
+- Arduino Uno with GRBL firmware (for our project we used: https://github.com/TGit-Tech/GRBL-28byj-48)
 - 3x 28BYJ-48 stepper motors (X, Y, Z axes)
 - HC-06 Bluetooth module
 - Pen lifting mechanism
