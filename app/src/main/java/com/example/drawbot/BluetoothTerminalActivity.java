@@ -300,7 +300,7 @@ public class BluetoothTerminalActivity extends AppCompatActivity {
         sendGrblCommand("M17"); // Enable steppers (if supported)
         sendGrblCommand("G1 Z1"); // Ensure pen is up initially (Z1 = pen up)
 
-        addToTerminal("[PEN PLOTTER INITIALIZED - Z1=UP, Z0=DOWN]");
+        addToTerminal("[PEN PLOTTER INITIALIZED]");
     }
 
     private void sendNextGCodeCommand() {
